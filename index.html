@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyber Shooter</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      overflow: hidden;
+    }
+
+    canvas {
+      border: 2px solid #333;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    }
+
+    .loading {
+      color: #0f0;
+      font-size: 24px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading" id="loading">Loading Cyber Shooter...</div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
