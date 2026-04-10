@@ -2,6 +2,52 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Game Balance Update (2026-04-10)
+
+### Player Changes
+- **Nerfed base stats**: All builds have reduced HP, damage, and speed (30-50% reduction)
+- **SPEED_SCALE_FACTOR**: Reduced from 80 to 30
+- **Stat Caps Added**:
+  - maxSpeed: 300
+  - maxShield: 150
+  - maxHp: 1500
+  - maxDamage: 80
+- Shield bar display now capped to prevent screen overflow
+
+### Enemy Changes
+- **Buffed stats 2.5-3x**: HP, damage, speed increased across all enemy types
+- **Increased spawn rate**: Doubled spawn count, max 40 enemies on screen
+- **Earlier hard enemies**: Fast at 30s (was 60s), Tank at 60s (was 120s), etc.
+- **More aggressive AI**:
+  - 50% faster movement
+  - Higher acceleration
+  - Unpredictable movement patterns (wobble + random direction changes)
+- **Shooters**: Reduced cooldown (2s → 1s), increased range (400 → 500)
+
+### Buff/Pickup Changes
+- **Spawn rates reduced**: Random 0.5% → 0.1%, enemy drops 10% → 3%
+- **Pickup values nerfed**: Health 50→20, Shield 25→10, Speed 20→5, Damage 5→2
+- All pickups now respect stat caps
+
+### XP Scaling
+- **Level penalty**: -5% XP per level from regular enemies (min 20%)
+- **Boss XP penalty**: -3% per level (min 30%)
+
+### UI/UX Improvements
+- **Fullscreen canvas**: Canvas now fills entire browser window
+- **Responsive**: Handles window resize automatically
+- **Menu improvements**: Instructions in visible bordered box with keyboard icons
+
+### Files Modified
+- `entities/player.js` - Stat caps, nerfed values, SPEED_SCALE_FACTOR
+- `entities/enemy.js` - Buffed stats, aggressive AI, unpredictable movement
+- `game.js` - Reduced buff values, XP scaling, cap enforcement, UI improvements
+- `index.html` - Fullscreen canvas styles
+- `main.js` - Responsive canvas with resize handling
+
+### New Files
+- `PATCH.md` - Created to track all game balance and feature changes
+
 ## Initial Implementation (2026-04-10)
 
 ### Core Systems Created
