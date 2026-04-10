@@ -2,13 +2,13 @@
 
 import { Entity } from '../systems/entity.js';
 
-// Enemy types
+// Enemy types - BUFFED for extreme difficulty
 const ENEMY_TYPES = {
   grunt: {
     name: 'Grunt',
-    hp: 50,
-    damage: 10,
-    speed: 80,
+    hp: 150,        // Was 50 (3x)
+    damage: 35,     // Was 10 (3.5x)
+    speed: 120,     // Was 80 (1.5x)
     size: 12,
     color: '#ff4444',
     xp: 10,
@@ -16,9 +16,9 @@ const ENEMY_TYPES = {
   },
   fast: {
     name: 'Fast',
-    hp: 30,
-    damage: 8,
-    speed: 150,
+    hp: 80,         // Was 30 (2.7x)
+    damage: 25,     // Was 8 (3x)
+    speed: 250,     // Was 150 (1.7x)
     size: 10,
     color: '#ff8800',
     xp: 15,
@@ -26,9 +26,9 @@ const ENEMY_TYPES = {
   },
   tank: {
     name: 'Tank',
-    hp: 150,
-    damage: 20,
-    speed: 40,
+    hp: 450,        // Was 150 (3x)
+    damage: 60,     // Was 20 (3x)
+    speed: 60,      // Was 40 (1.5x)
     size: 18,
     color: '#aa4444',
     xp: 30,
@@ -36,9 +36,9 @@ const ENEMY_TYPES = {
   },
   shooter: {
     name: 'Shooter',
-    hp: 40,
-    damage: 15,
-    speed: 60,
+    hp: 120,        // Was 40 (3x)
+    damage: 45,     // Was 15 (3x)
+    speed: 100,     // Was 60 (1.7x)
     size: 12,
     color: '#ff00ff',
     xp: 20,
@@ -47,9 +47,9 @@ const ENEMY_TYPES = {
   },
   elite: {
     name: 'Elite',
-    hp: 300,
-    damage: 35,
-    speed: 70,
+    hp: 900,        // Was 300 (3x)
+    damage: 100,    // Was 35 (2.9x)
+    speed: 120,     // Was 70 (1.7x)
     size: 16,
     color: '#aa0000',
     xp: 100,
@@ -101,17 +101,29 @@ class Enemy extends Entity {
     const dy = playerCenter.y - center.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Movement
+    // Movement - MORE AGGRESSIVE with UNPREDICTABILITY
     if (distance > 0) {
-      let speed = this.speed;
+      let speed = this.speed * 1.5; // 50% faster movement
 
-      // Shooter keeps distance
+      // Shooter keeps distance but more aggressively
       if (this.shoots && distance < 200) {
-        speed = -speed * 0.3; // Back away
+        speed = -speed * 0.5; // Back away faster
       }
 
-      this.vx += (dx / distance) * speed * deltaTime;
-      this.vy += (dy / distance) * speed * deltaTime;
+      // Add unpredictability - random deviation from direct path
+      const wobble = Math.sin(Date.now() / 200 + this.id.charCodeAt(0)) * 0.3;
+      const angleToPlayer = Math.atan2(dy, dx);
+      const angleWithWobble = angleToPlayer + wobble;
+
+      // Higher acceleration for more aggressive chasing
+      this.vx += Math.cos(angleWithWobble) * speed * deltaTime * 1.5;
+      this.vy += Math.sin(angleWithWobble) * speed * deltaTime * 1.5;
+
+      // Occasionally change direction randomly for unpredictability
+      if (Math.random() < 0.02) {
+        this.vx += (Math.random() - 0.5) * speed * 0.5;
+        this.vy += (Math.random() - 0.5) * speed * 0.5;
+      }
     }
 
     // Apply physics
@@ -123,11 +135,11 @@ class Enemy extends Entity {
     // Bounds
     this.clampToBounds(canvasWidth, canvasHeight);
 
-    // Shooting
+    // Shooting - more aggressive (reduced cooldown)
     if (this.shoots) {
       this.shootCooldown -= deltaTime;
-      if (this.shootCooldown <= 0 && distance < 400) {
-        this.shootCooldown = 2;
+      if (this.shootCooldown <= 0 && distance < 500) { // Increased range from 400 to 500
+        this.shootCooldown = 1; // Reduced cooldown from 2 to 1
         return { action: 'shoot', target: player };
       }
     }

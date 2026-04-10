@@ -11,25 +11,33 @@
       box-sizing: border-box;
     }
 
-    body {
+    html, body {
       background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
+      width: 100%;
+      height: 100%;
       font-family: 'Courier New', monospace;
       overflow: hidden;
     }
 
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
     canvas {
-      border: 2px solid #333;
-      box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+      display: block;
+      border: none;
     }
 
     .loading {
       color: #0f0;
       font-size: 24px;
       text-align: center;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
     }
   </style>
 </head>

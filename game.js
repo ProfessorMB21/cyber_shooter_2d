@@ -89,23 +89,23 @@ class Pickup {
 
     switch (type) {
       case 'health':
-        this.value = 50;
+        this.value = 20;    // Reduced from 50
         this.color = '#44ff44';
         break;
       case 'shield':
-        this.value = 25;
+        this.value = 10;    // Reduced from 25
         this.color = '#4444ff';
         break;
       case 'speed':
-        this.value = 20;
+        this.value = 5;     // Reduced from 20
         this.color = '#ffff44';
         break;
       case 'damage':
-        this.value = 5;
+        this.value = 2;     // Reduced from 5
         this.color = '#ff4444';
         break;
       default:
-        this.value = 10;
+        this.value = 5;
         this.color = '#ffffff';
     }
   }
@@ -133,18 +133,26 @@ class Pickup {
   }
 
   applyEffect(player) {
+    // Stat caps (matching player.js STAT_CAPS)
+    const MAX_SPEED = 300;
+    const MAX_SHIELD = 150;
+    const MAX_DAMAGE = 80;
+
     switch (this.type) {
       case 'health':
         player.heal(this.value);
         break;
       case 'shield':
-        player.addShield(this.value);
+        // Cap shield at max
+        player.shield = Math.min(player.shield + this.value, MAX_SHIELD);
         break;
       case 'speed':
-        player.currentStats.speed += this.value;
+        // Cap speed at max
+        player.currentStats.speed = Math.min(player.currentStats.speed + this.value, MAX_SPEED);
         break;
       case 'damage':
-        player.currentStats.damage += this.value;
+        // Cap damage at max
+        player.currentStats.damage = Math.min(player.currentStats.damage + this.value, MAX_DAMAGE);
         break;
     }
   }
@@ -407,8 +415,8 @@ class Game {
       }
     });
 
-    // Random pickups
-    if (Math.random() < 0.005) {
+    // Random pickups (reduced spawn rate from 0.005 to 0.001)
+    if (Math.random() < 0.001) {
       const types = ['health', 'shield', 'speed', 'damage'];
       const type = types[Math.floor(Math.random() * types.length)];
       this.pickups.push(new Pickup(
@@ -478,17 +486,20 @@ class Game {
     const mult = this.difficultyMultipliers[this.difficulty];
     const types = Object.keys(ENEMY_TYPES);
 
-    // Spawn count based on wave
-    const count = Math.min(5 + Math.floor(this.gameTime / 30), 15);
+    // Spawn count based on wave - INCREASED (doubled)
+    const count = Math.min(10 + Math.floor(this.gameTime / 20), 25);
 
     for (let i = 0; i < count; i++) {
-      // Choose enemy type based on game time
+      // Choose enemy type based on game time - MORE DIFFICULT TYPES
       let typeIndex = 0;
       const rand = Math.random();
-      if (this.gameTime > 60 && rand < 0.2) typeIndex = 1; // Fast
-      if (this.gameTime > 120 && rand < 0.1) typeIndex = 2; // Tank
-      if (this.gameTime > 180 && rand < 0.15) typeIndex = 3; // Shooter
-      if (this.gameTime > 240 && rand < 0.05) typeIndex = 4; // Elite
+      if (this.gameTime > 30 && rand < 0.3) typeIndex = 1; // Fast (was 60s, now 30s)
+      if (this.gameTime > 60 && rand < 0.2) typeIndex = 2; // Tank (was 120s, now 60s)
+      if (this.gameTime > 90 && rand < 0.25) typeIndex = 3; // Shooter (was 180s, now 90s)
+      if (this.gameTime > 120 && rand < 0.1) typeIndex = 4; // Elite (was 240s, now 120s)
+
+      // Limit total enemies to prevent screen filling (max 40 enemies)
+      if (this.enemies.length >= 40) break;
 
       const type = types[typeIndex];
       const x = Math.random() * (this.width - 100) + 50;
@@ -516,14 +527,16 @@ class Game {
     const comboMultiplier = Math.min(5, 1 + this.combo * 0.1);
     this.score += Math.floor(baseScore * mult.score * comboMultiplier);
 
-    this.player.addXP(enemy.xp || 10);
+    // XP reduction as player progresses (higher level = less XP from low-level enemies)
+    const levelPenalty = Math.max(0.2, 1 - (this.player.level - 1) * 0.05);
+    this.player.addXP((enemy.xp || 10) * levelPenalty);
 
     // Spawn particles
     const center = enemy.getCenter();
     this.particles.spawnExplosion(center.x, center.y, 8, enemy.color);
 
-    // Random pickup drop
-    if (Math.random() < 0.1) {
+    // Random pickup drop (reduced from 10% to 3%)
+    if (Math.random() < 0.03) {
       const types = ['health', 'shield'];
       const type = types[Math.floor(Math.random() * types.length)];
       this.pickups.push(new Pickup(center.x, center.y, type));
@@ -533,7 +546,9 @@ class Game {
   onBossKill(boss) {
     const mult = this.difficultyMultipliers[this.difficulty];
     this.score += Math.floor(1000 * mult.score);
-    this.player.addXP(500);
+    // XP reduction as player progresses
+    const bossLevelPenalty = Math.max(0.3, 1 - (this.player.level - 1) * 0.03);
+    this.player.addXP(500 * bossLevelPenalty);
 
     // Lots of particles
     const center = boss.getCenter();
@@ -710,12 +725,27 @@ class Game {
       ctx.fillText(buildData.description.substring(0, 35), this.width / 2 - 140, y + 10);
     });
 
-    // Instructions
-    ctx.fillStyle = '#666';
-    ctx.font = '14px monospace';
+    // Instructions - MORE VISIBLE with background
+    const instructionY = this.height - 100;
+
+    // Draw background box for instructions
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(this.width / 2 - 250, instructionY - 35, 500, 70);
+
+    // Border
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(this.width / 2 - 250, instructionY - 35, 500, 70);
+
+    // Text
+    ctx.fillStyle = '#0f0';
+    ctx.font = 'bold 16px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('Use UP/DOWN to select build, LEFT/RIGHT for difficulty', this.width / 2, this.height - 60);
-    ctx.fillText('Press SPACE to start', this.width / 2, this.height - 40);
+    ctx.fillText('◀ LEFT/RIGHT ▸  Change Difficulty', this.width / 2, instructionY - 10);
+    ctx.fillText('▲ UP/DOWN ▼    Select Build', this.width / 2, instructionY + 15);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px monospace';
+    ctx.fillText('Press [SPACE] to Start!', this.width / 2, instructionY + 45);
 
     // Handle input
     if (this.input.isKeyPressed('ArrowUp')) {

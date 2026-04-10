@@ -2,141 +2,152 @@
 
 import { Entity } from '../systems/entity.js';
 
-// Player Builds Configuration
+// Player Builds Configuration - NERFED stats
 const BUILDS = {
   fighter: {
     name: 'Fighter',
     description: 'Balanced with high health and damage',
     color: '#00ff00',
     stats: {
-      hp: 500,
-      maxHp: 500,
-      damage: 20,
-      speed: 3,
-      armor: 20,
+      hp: 350,
+      maxHp: 350,
+      damage: 12,
+      speed: 2.5,
+      armor: 15,
       evasion: 5,
       criticalChance: 0,
       criticalDamage: 1.0,
-      regen: 2,
+      regen: 1,
       cooldown: 1
     },
     abilities: ['HEALING SHOT'],
-    passive: 'Toughen Up - 10% HP gain per level'
+    passive: 'Toughen Up - 8% HP gain per level'
   },
   glass_cannon: {
     name: 'Glass Cannon',
     description: 'Extreme damage but fragile',
     color: '#ff00ff',
     stats: {
-      hp: 280,
-      maxHp: 280,
-      damage: 65,
-      speed: 5,
-      armor: 5,
+      hp: 200,
+      maxHp: 200,
+      damage: 35,
+      speed: 3.5,
+      armor: 3,
       evasion: 15,
       criticalChance: 0.20,
       criticalDamage: 2.0,
-      regen: 1,
+      regen: 0.5,
       cooldown: 1
     },
     abilities: ['HEALING SHOT'],
-    passive: 'Overclock - 12% damage per level'
+    passive: 'Overclock - 10% damage per level'
   },
   tank: {
     name: 'Tank',
     description: 'Massive health pool, slow',
     color: '#4444ff',
     stats: {
-      hp: 800,
-      maxHp: 800,
-      damage: 15,
-      speed: 2,
-      armor: 60,
+      hp: 550,
+      maxHp: 550,
+      damage: 8,
+      speed: 1.8,
+      armor: 45,
       evasion: 0,
       criticalChance: 0,
       criticalDamage: 0,
-      regen: 3,
+      regen: 1.5,
       cooldown: 1
     },
     abilities: ['SHIELD'],
-    passive: 'Iron Skin - 15% HP gain per level'
+    passive: 'Iron Skin - 12% HP gain per level'
   },
   balanced: {
     name: 'Balanced',
     description: 'Versatile all-rounder',
     color: '#ffff00',
     stats: {
-      hp: 450,
-      maxHp: 450,
-      damage: 28,
-      speed: 4,
-      armor: 25,
+      hp: 300,
+      maxHp: 300,
+      damage: 15,
+      speed: 3,
+      armor: 18,
       evasion: 12,
       criticalChance: 0.10,
       criticalDamage: 1.5,
-      regen: 2,
+      regen: 1,
       cooldown: 1
     },
     abilities: ['SHIELD'],
-    passive: 'Adaptability - 8% all stats per level'
+    passive: 'Adaptability - 6% all stats per level'
   },
   sniper: {
     name: 'Sniper',
     description: 'High crit chance, precision attacks',
     color: '#00ffff',
     stats: {
-      hp: 320,
-      maxHp: 320,
-      damage: 25,
-      speed: 4,
-      armor: 15,
+      hp: 220,
+      maxHp: 220,
+      damage: 14,
+      speed: 3,
+      armor: 10,
       evasion: 20,
       criticalChance: 0.25,
       criticalDamage: 2.5,
-      regen: 1.5,
+      regen: 0.8,
       cooldown: 1
     },
     abilities: ['SNIPER SHOT'],
-    passive: 'Sharpshooter - 10% crit chance per level'
+    passive: 'Sharpshooter - 8% crit chance per level'
   },
   berserker: {
     name: 'Berserker',
     description: 'Rage builds over time',
     color: '#ff0000',
     stats: {
-      hp: 480,
-      maxHp: 480,
-      damage: 35,
-      speed: 4.5,
-      armor: 18,
+      hp: 320,
+      maxHp: 320,
+      damage: 18,
+      speed: 3.2,
+      armor: 12,
       evasion: 10,
       criticalChance: 0.18,
       criticalDamage: 2.2,
-      regen: 1.8,
+      regen: 1,
       cooldown: 1
     },
     abilities: ['BERSERK RAGE'],
-    passive: 'Adrenaline - 10% damage per rage, max 150%'
+    passive: 'Adrenaline - 8% damage per rage, max 100%'
   },
   guardian: {
     name: 'Guardian',
     description: 'High armor, support capabilities',
     color: '#888888',
     stats: {
-      hp: 650,
-      maxHp: 650,
-      damage: 18,
-      speed: 3,
-      armor: 55,
+      hp: 450,
+      maxHp: 450,
+      damage: 10,
+      speed: 2.2,
+      armor: 40,
       evasion: 8,
       criticalChance: 0,
       criticalDamage: 0,
-      regen: 3,
+      regen: 1.5,
       cooldown: 1
     },
     abilities: ['SHIELD', 'REVIVE'],
-    passive: 'Protector - 12% armor per level'
+    passive: 'Protector - 10% armor per level'
   }
+};
+
+// Stat scaling factors
+const SPEED_SCALE_FACTOR = 30;  // Speed multiplier for gameplay (reduced from 80)
+
+// Stat caps
+const STAT_CAPS = {
+  maxSpeed: 300,      // Maximum speed player can achieve (capped)
+  maxShield: 150,     // Maximum shield cap (reduced from 200)
+  maxHp: 1500,        // Maximum HP cap (reduced from 2000)
+  maxDamage: 80      // Maximum damage cap
 };
 
 // Stat growth per level
@@ -165,7 +176,7 @@ class Player extends Entity {
       hp: build.stats.hp,
       maxHp: build.stats.maxHp,
       damage: build.stats.damage,
-      speed: build.stats.speed * 80, // Scale speed for game
+      speed: build.stats.speed * SPEED_SCALE_FACTOR,
       armor: build.stats.armor
     });
 
@@ -296,9 +307,9 @@ class Player extends Entity {
     this.hp = Math.min(this.hp + amount, this.currentStats.maxHp);
   }
 
-  // Add shield
+  // Add shield (capped at STAT_CAPS.maxShield)
   addShield(amount) {
-    this.shield += amount;
+    this.shield = Math.min(this.shield + amount, STAT_CAPS.maxShield);
   }
 
   // Activate ability
@@ -439,10 +450,11 @@ class Player extends Entity {
     const center = this.getCenter();
     this.drawHealthBar(ctx, center.x, this.y - 10, 40, 6);
 
-    // Shield bar
+    // Shield bar (max width capped)
     if (this.shield > 0) {
       ctx.fillStyle = '#4444ff';
-      ctx.fillRect(center.x - 20, this.y - 18, 40 * (this.shield / 200), 4);
+      const shieldPercent = Math.min(this.shield / STAT_CAPS.maxShield, 1);
+      ctx.fillRect(center.x - 20, this.y - 18, 40 * shieldPercent, 4);
     }
 
     // Level indicator
@@ -473,4 +485,4 @@ class Player extends Entity {
   }
 }
 
-export { Player, BUILDS, STAT_GROWTH };
+export { Player, BUILDS, STAT_GROWTH, STAT_CAPS, SPEED_SCALE_FACTOR };
