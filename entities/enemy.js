@@ -10,7 +10,7 @@ const ENEMY_TYPES = {
     damage: 35,     // Was 10 (3.5x)
     speed: 120,     // Was 80 (1.5x)
     size: 12,
-    color: '#ff4444',
+    color: '#3a99e7',
     xp: 10,
     score: 10
   },
@@ -20,7 +20,7 @@ const ENEMY_TYPES = {
     damage: 25,     // Was 8 (3x)
     speed: 250,     // Was 150 (1.7x)
     size: 10,
-    color: '#ff8800',
+    color: '#9fe95a',
     xp: 15,
     score: 15
   },
@@ -28,9 +28,9 @@ const ENEMY_TYPES = {
     name: 'Tank',
     hp: 450,        // Was 150 (3x)
     damage: 60,     // Was 20 (3x)
-    speed: 60,      // Was 40 (1.5x)
+    speed: 80,      // Was 40 (1.5x)
     size: 18,
-    color: '#aa4444',
+    color: '#756767',
     xp: 30,
     score: 30
   },
@@ -40,7 +40,7 @@ const ENEMY_TYPES = {
     damage: 45,     // Was 15 (3x)
     speed: 100,     // Was 60 (1.7x)
     size: 12,
-    color: '#ff00ff',
+    color: '#6518ca',
     xp: 20,
     score: 20,
     shoots: true
@@ -48,12 +48,13 @@ const ENEMY_TYPES = {
   elite: {
     name: 'Elite',
     hp: 900,        // Was 300 (3x)
-    damage: 100,    // Was 35 (2.9x)
+    damage: 65,    // Was 35 (2.9x)
     speed: 120,     // Was 70 (1.7x)
     size: 16,
     color: '#aa0000',
     xp: 100,
-    score: 100
+    score: 100,
+    shoots: true
   }
 };
 
@@ -103,11 +104,11 @@ class Enemy extends Entity {
 
     // Movement - MORE AGGRESSIVE with UNPREDICTABILITY
     if (distance > 0) {
-      let speed = this.speed * 1.5; // 50% faster movement
+      let speed = this.speed * 2.5; // 50% faster movement
 
       // Shooter keeps distance but more aggressively
       if (this.shoots && distance < 200) {
-        speed = -speed * 0.5; // Back away faster
+        speed = -speed * 7.5; // Back away faster
       }
 
       // Add unpredictability - random deviation from direct path
@@ -138,8 +139,8 @@ class Enemy extends Entity {
     // Shooting - more aggressive (reduced cooldown)
     if (this.shoots) {
       this.shootCooldown -= deltaTime;
-      if (this.shootCooldown <= 0 && distance < 500) { // Increased range from 400 to 500
-        this.shootCooldown = 1; // Reduced cooldown from 2 to 1
+      if (this.shootCooldown <= 0 && distance < 450) { // Shooting range
+        this.shootCooldown = 1.75; // Reduced cooldown from 2 to 1
         return { action: 'shoot', target: player };
       }
     }

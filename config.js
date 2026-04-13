@@ -208,10 +208,10 @@ const GAME_CONFIG = {
       { name: 'Critical Potion', effect: 'stat', value: 10, type: 'crit_chance', rarity: 'rare' }
     ],
     active: [
-      { name: 'Healing Shot', type: 'heal', cooldown: 10, duration: 30 },
-      { name: 'Shield', type: 'shield', cooldown: 15, duration: 60 },
-      { name: 'Sniper Shot', type: 'crit', cooldown: 20, duration: 0 },
-      { name: 'Berserk Rage', type: 'rage', cooldown: 30, duration: 0 }
+      { name: 'Healing Shot', type: 'heal', cooldown: 6, duration: 30 },
+      { name: 'Shield', type: 'shield', cooldown: 8, duration: 60 },
+      { name: 'Sniper Shot', type: 'crit', cooldown: 12, duration: 0 },
+      { name: 'Berserk Rage', type: 'rage', cooldown: 10, duration: 0 }
     ]
   },
 
@@ -224,7 +224,7 @@ const GAME_CONFIG = {
   // Game settings
   maxScore: Infinity,
   frameRate: 60,
-  showFPS: false
+  showFPS: true
 };
 
 export default GAME_CONFIG;

@@ -32,7 +32,7 @@ const BUILDS = {
       maxHp: 200,
       damage: 35,
       speed: 3.5,
-      armor: 3,
+      armor: 8,
       evasion: 15,
       criticalChance: 0.20,
       criticalDamage: 2.0,
@@ -70,7 +70,7 @@ const BUILDS = {
       maxHp: 300,
       damage: 15,
       speed: 3,
-      armor: 18,
+      armor: 22,
       evasion: 12,
       criticalChance: 0.10,
       criticalDamage: 1.5,
@@ -147,12 +147,12 @@ const STAT_CAPS = {
   maxSpeed: 300,      // Maximum speed player can achieve (capped)
   maxShield: 150,     // Maximum shield cap (reduced from 200)
   maxHp: 1500,        // Maximum HP cap (reduced from 2000)
-  maxDamage: 80      // Maximum damage cap
+  maxDamage: 210      // Maximum damage cap
 };
 
 // Stat growth per level
 const STAT_GROWTH = {
-  hpMultiplier: 1.1,
+  hpMultiplier: 1.2,
   damageMultiplier: 1.08,
   armorMultiplier: 1.05,
   speedMultiplier: 1.02,
@@ -320,14 +320,15 @@ class Player extends Entity {
       case 'HEALING SHOT':
         if (!this.cooldowns.healingShot || now > this.cooldowns.healingShot) {
           this.heal(this.currentStats.maxHp * 0.2);
-          this.cooldowns.healingShot = now + 10000; // 10 seconds
+          this.cooldowns.healingShot = now + 6000; // 6 seconds
           return true;
         }
         break;
       case 'SHIELD':
         if (!this.cooldowns.shield || now > this.cooldowns.shield) {
-          this.addShield(100);
-          this.cooldowns.shield = now + 15000; // 15 seconds
+          const shieldValue = 80;
+          this.addShield(shieldValue);
+          this.cooldowns.shield = now + 8000; // 8 seconds
           return true;
         }
         break;
@@ -335,14 +336,14 @@ class Player extends Entity {
         if (!this.cooldowns.sniperShot || now > this.cooldowns.sniperShot) {
           // Guaranteed crit next shot
           this.nextShotCrit = true;
-          this.cooldowns.sniperShot = now + 20000; // 20 seconds
+          this.cooldowns.sniperShot = now + 12000; // 12 seconds
           return true;
         }
         break;
       case 'BERSERK RAGE':
         if (!this.cooldowns.berserkRage || now > this.cooldowns.berserkRage) {
           this.rage = this.maxRage;
-          this.cooldowns.berserkRage = now + 30000; // 30 seconds
+          this.cooldowns.berserkRage = now + 10000; // 10 seconds
           return true;
         }
         break;

@@ -2,182 +2,13 @@
 
 import { InputHandler } from './input.js';
 import { ParticleSystem } from './systems/particles.js';
-import { Player, BUILDS } from './entities/player.js';
+import { Player, BUILDS, SPEED_SCALE_FACTOR } from './entities/player.js';
 import { Enemy, ENEMY_TYPES } from './entities/enemy.js';
 import { Boss, BOSS_PATTERNS } from './entities/boss.js';
+import { Projectile } from './entities/projectile.js';
+import { Pickup } from './entities/pickup.js';
+import { Collision } from './systems/collision.js';
 import config from './config.js';
-
-// Projectile class
-class Projectile {
-  constructor(x, y, vx, vy, damage, color, isPlayer = false, options = {}) {
-    this.x = x;
-    this.y = y;
-    this.vx = vx;
-    this.vy = vy;
-    this.damage = damage;
-    this.color = color;
-    this.isPlayer = isPlayer;
-    this.dead = false;
-    this.size = options.size || 6;
-    this.piercing = options.piercing || false;
-    this.aoe = options.aoe || false;
-    this.expand = options.expand || false;
-    this.maxSize = options.maxSize || this.size;
-    this.duration = options.duration || 0;
-    this.hits = [];
-
-    if (this.aoe) {
-      this.size = 0;
-    }
-  }
-
-  update(deltaTime) {
-    if (this.dead) return false;
-
-    this.x += this.vx * deltaTime;
-    this.y += this.vy * deltaTime;
-
-    // AOE expansion
-    if (this.expand && this.size < this.maxSize) {
-      this.size += this.maxSize * deltaTime;
-    }
-
-    // Duration countdown
-    if (this.duration > 0) {
-      this.duration -= deltaTime;
-      if (this.duration <= 0) {
-        this.dead = true;
-      }
-    }
-
-    // Out of bounds
-    if (this.x < -50 || this.x > 850 || this.y < -50 || this.y > 650) {
-      if (!this.aoe) {
-        this.dead = true;
-      }
-    }
-
-    return !this.dead;
-  }
-
-  draw(ctx) {
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Trail effect
-    if (!this.aoe) {
-      ctx.fillStyle = this.color + '44';
-      ctx.beginPath();
-      ctx.arc(this.x - this.vx * 0.02, this.y - this.vy * 0.02, this.size * 0.7, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-}
-
-// Pickup class
-class Pickup {
-  constructor(x, y, type) {
-    this.x = x;
-    this.y = y;
-    this.type = type;
-    this.dead = false;
-    this.width = 24;
-    this.height = 24;
-    this.bob = 0;
-
-    switch (type) {
-      case 'health':
-        this.value = 20;    // Reduced from 50
-        this.color = '#44ff44';
-        break;
-      case 'shield':
-        this.value = 10;    // Reduced from 25
-        this.color = '#4444ff';
-        break;
-      case 'speed':
-        this.value = 5;     // Reduced from 20
-        this.color = '#ffff44';
-        break;
-      case 'damage':
-        this.value = 2;     // Reduced from 5
-        this.color = '#ff4444';
-        break;
-      default:
-        this.value = 5;
-        this.color = '#ffffff';
-    }
-  }
-
-  update(deltaTime, player) {
-    this.bob += deltaTime * 5;
-
-    // Float towards player if close
-    const dx = player.getCenter().x - this.x;
-    const dy = player.getCenter().y - this.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    if (distance < 100) {
-      this.x += (dx / distance) * 100 * deltaTime;
-      this.y += (dy / distance) * 100 * deltaTime;
-    }
-
-    // Collision
-    if (distance < 30) {
-      this.applyEffect(player);
-      this.dead = true;
-    }
-
-    return !this.dead;
-  }
-
-  applyEffect(player) {
-    // Stat caps (matching player.js STAT_CAPS)
-    const MAX_SPEED = 300;
-    const MAX_SHIELD = 150;
-    const MAX_DAMAGE = 80;
-
-    switch (this.type) {
-      case 'health':
-        player.heal(this.value);
-        break;
-      case 'shield':
-        // Cap shield at max
-        player.shield = Math.min(player.shield + this.value, MAX_SHIELD);
-        break;
-      case 'speed':
-        // Cap speed at max
-        player.currentStats.speed = Math.min(player.currentStats.speed + this.value, MAX_SPEED);
-        break;
-      case 'damage':
-        // Cap damage at max
-        player.currentStats.damage = Math.min(player.currentStats.damage + this.value, MAX_DAMAGE);
-        break;
-    }
-  }
-
-  draw(ctx) {
-    const bobOffset = Math.sin(this.bob) * 3;
-
-    // Glow
-    ctx.fillStyle = this.color + '33';
-    ctx.beginPath();
-    ctx.arc(this.x, this.y + bobOffset, 18, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Core
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.x - 10, this.y - 10 + bobOffset, 20, 20);
-
-    // Icon
-    ctx.fillStyle = '#000';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
-    const icon = this.type === 'health' ? '+' : this.type === 'shield' ? 'S' : this.type === 'speed' ? '>' : '!';
-    ctx.fillText(icon, this.x, this.y + 4 + bobOffset);
-  }
-}
 
 // Main Game class
 class Game {
@@ -222,14 +53,8 @@ class Game {
     this.comboTimer = 0;
     this.kills = 0;
 
-    // Difficulty
+    // Difficulty - use config as single source of truth
     this.difficulty = this.difficulties[this.difficultySelection];
-    this.difficultyMultipliers = {
-      easy: { enemyHp: 0.8, enemyDamage: 0.6, enemySpeed: 0.7, score: 0.5 },
-      normal: { enemyHp: 1, enemyDamage: 1, enemySpeed: 1, score: 1 },
-      hard: { enemyHp: 1.4, enemyDamage: 1.4, enemySpeed: 1.4, score: 1.5 },
-      nightmare: { enemyHp: 2, enemyDamage: 2, enemySpeed: 1.8, score: 2.5 }
-    };
 
     // Build names
     this.buildNames = Object.keys(BUILDS);
@@ -240,11 +65,11 @@ class Game {
 
   start(buildName, difficulty) {
     this.difficulty = difficulty || 'normal';
-    const mult = this.difficultyMultipliers[this.difficulty];
+    const mult = config.difficulties[this.difficulty];
 
     // Create player
     this.player = new Player(buildName, this.width / 2, this.height - 100);
-    this.player.currentStats.speed = this.player.baseStats.speed * 80;
+    this.player.currentStats.speed = this.player.baseStats.speed * SPEED_SCALE_FACTOR;
 
     // Reset game data
     this.enemies = [];
@@ -297,7 +122,7 @@ class Game {
       this.combo = 0;
     }
 
-    const mult = this.difficultyMultipliers[this.difficulty];
+    const mult = config.difficulties[this.difficulty];
 
     // Update player
     this.player.update(deltaTime, this.input, this.width, this.height);
@@ -483,7 +308,7 @@ class Game {
   }
 
   spawnEnemies() {
-    const mult = this.difficultyMultipliers[this.difficulty];
+    const mult = config.difficulties[this.difficulty];
     const types = Object.keys(ENEMY_TYPES);
 
     // Spawn count based on wave - INCREASED (doubled)
@@ -493,13 +318,13 @@ class Game {
       // Choose enemy type based on game time - MORE DIFFICULT TYPES
       let typeIndex = 0;
       const rand = Math.random();
-      if (this.gameTime > 30 && rand < 0.3) typeIndex = 1; // Fast (was 60s, now 30s)
-      if (this.gameTime > 60 && rand < 0.2) typeIndex = 2; // Tank (was 120s, now 60s)
-      if (this.gameTime > 90 && rand < 0.25) typeIndex = 3; // Shooter (was 180s, now 90s)
-      if (this.gameTime > 120 && rand < 0.1) typeIndex = 4; // Elite (was 240s, now 120s)
+      if (this.gameTime > 30 && rand < 0.5) typeIndex = 1; // Fast (was 60s, now 30s)
+      if (this.gameTime > 60 && rand < 0.35) typeIndex = 2; // Tank (was 120s, now 60s)
+      if (this.gameTime > 90 && rand < 0.3) typeIndex = 3; // Shooter (was 180s, now 90s)
+      if (this.gameTime > 120 && rand < 0.25) typeIndex = 4; // Elite (was 240s, now 120s)
 
       // Limit total enemies to prevent screen filling (max 40 enemies)
-      if (this.enemies.length >= 40) break;
+      if (this.enemies.length >= 30) break;
 
       const type = types[typeIndex];
       const x = Math.random() * (this.width - 100) + 50;
@@ -510,7 +335,7 @@ class Game {
   }
 
   spawnBoss(index) {
-    const mult = this.difficultyMultipliers[this.difficulty];
+    const mult = config.difficulties[this.difficulty];
     const x = this.width / 2;
     const y = 100;
 
@@ -522,13 +347,13 @@ class Game {
     this.combo++;
     this.comboTimer = 3;
 
-    const mult = this.difficultyMultipliers[this.difficulty];
+    const mult = config.difficulties[this.difficulty];
     const baseScore = enemy.score || 10;
     const comboMultiplier = Math.min(5, 1 + this.combo * 0.1);
-    this.score += Math.floor(baseScore * mult.score * comboMultiplier);
+    this.score += Math.floor(baseScore * mult.scoreMultiplier * comboMultiplier);
 
     // XP reduction as player progresses (higher level = less XP from low-level enemies)
-    const levelPenalty = Math.max(0.2, 1 - (this.player.level - 1) * 0.05);
+    const levelPenalty = Math.max(0.5, 1 - (this.player.level - 0.8) * 0.05);
     this.player.addXP((enemy.xp || 10) * levelPenalty);
 
     // Spawn particles
@@ -544,10 +369,10 @@ class Game {
   }
 
   onBossKill(boss) {
-    const mult = this.difficultyMultipliers[this.difficulty];
-    this.score += Math.floor(1000 * mult.score);
+    const mult = config.difficulties[this.difficulty];
+    this.score += Math.floor(1000 * mult.scoreMultiplier);
     // XP reduction as player progresses
-    const bossLevelPenalty = Math.max(0.3, 1 - (this.player.level - 1) * 0.03);
+    const bossLevelPenalty = Math.max(0.7, 1 - (this.player.level - 0.6) * 0.03);
     this.player.addXP(500 * bossLevelPenalty);
 
     // Lots of particles
@@ -745,7 +570,7 @@ class Game {
     ctx.fillText('▲ UP/DOWN ▼    Select Build', this.width / 2, instructionY + 15);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 18px monospace';
-    ctx.fillText('Press [SPACE] to Start!', this.width / 2, instructionY + 45);
+    ctx.fillText('Press [SPACE] to Start!', this.width / 2, instructionY + 65);
 
     // Handle input
     if (this.input.isKeyPressed('ArrowUp')) {

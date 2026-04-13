@@ -1,4 +1,5 @@
 // Enemy System
+// Re-exports from entities/enemy.js for backward compatibility
 
 import { Enemy, ENEMY_TYPES } from '../entities/enemy.js';
 
@@ -13,6 +14,12 @@ class EnemyManager {
     // Update all enemies
     this.enemies = this.enemies.filter(e => {
       const result = e.update(deltaTime, this.game.player, this.game.width, this.game.height);
+      if (result && result.action === 'shoot') {
+        // Handle enemy shooting
+        if (this.game.enemyShoot) {
+          this.game.enemyShoot(e, result.target);
+        }
+      }
       if (e.dead) {
         this.game.onKill(e);
       }

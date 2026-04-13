@@ -1,34 +1,40 @@
 // Start Scene
+// NOTE: This scene is not currently integrated. Game uses inline render methods.
+// To integrate: import config and pass game instance references.
+
+import config from '../config.js';
 
 class StartScene {
-  constructor(sceneManager, config) {
-    this.sceneManager = sceneManager;
-    this.config = config;
+  constructor(game) {
+    this.game = game;
   }
 
   update(deltaTime) {
-    return false; // Exit scene after 3 seconds
+    return true;
   }
 
   render(ctx) {
+    const width = this.game.width;
+    const height = this.game.height;
+
     // Draw title
     ctx.fillStyle = '#ffffff';
     ctx.font = '48px "Courier New"';
     ctx.textAlign = 'center';
-    ctx.fillText('Simple Claude Game', GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 - 50);
+    ctx.fillText(config.TITLE, width / 2, height / 2 - 50);
 
     // Draw subtitle
     ctx.font = '24px "Courier New"';
-    ctx.fillText('Select a build to start', GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 + 10);
+    ctx.fillText('Select a build to start', width / 2, height / 2 + 10);
 
     // Draw build buttons
-    const builds = ['fighter', 'caster', 'assault'];
+    const builds = config.builds.slice(0, 3); // Show first 3 builds
     const buttonHeight = 60;
     const spacing = 40;
 
     builds.forEach((build, index) => {
-      const y = GAME_CONFIG.HEIGHT / 2 + 150 + index * buttonHeight + spacing;
-      const x = GAME_CONFIG.WIDTH / 2 - 150;
+      const y = height / 2 + 150 + index * buttonHeight + spacing;
+      const x = width / 2 - 150;
 
       // Draw button
       ctx.fillStyle = '#222';
@@ -39,9 +45,9 @@ class StartScene {
       // Draw text
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
-      ctx.fillText(build.charAt(0).toUpperCase() + build.slice(1), GAME_CONFIG.WIDTH / 2, y + buttonHeight / 2 + 10);
+      ctx.fillText(build.display, width / 2, y + buttonHeight / 2 + 10);
     });
   }
 }
 
-module.exports = { StartScene };
+export { StartScene };

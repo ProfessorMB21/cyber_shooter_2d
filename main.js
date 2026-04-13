@@ -21,6 +21,12 @@ function init() {
   // Create game
   const game = new Game(canvas);
 
+  // Hide loading div
+  const loadingDiv = document.getElementById('loading');
+  if (loadingDiv) {
+    loadingDiv.style.display = 'none';
+  }
+
   // Handle window resize
   window.addEventListener('resize', () => {
     canvas.width = window.innerWidth;

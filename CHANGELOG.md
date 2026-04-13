@@ -2,6 +2,50 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Code Refactoring & Balance Update (2026-04-13)
+
+### Architecture Improvements
+- **Extracted entity classes** to dedicated files for better organization:
+  - `entities/projectile.js` - Projectile class with physics and rendering
+  - `entities/pickup.js` - Pickup class with stat cap enforcement
+  - `systems/projectiles.js` and `systems/pickups.js` now re-export from entities
+  - Removed ~290 lines of duplicated code from `game.js`
+
+### Player Changes
+- **Damage Cap**: Increased from 80 to 210
+- **HP Growth**: Multiplier increased from 1.1 to 1.2 per level
+- **Armor Buffs**:
+  - Heavy build: 18 → 22
+  - Glass Cannon: 3 → 8
+- **Ability Cooldowns**:
+  - Healing Shot: 10s → 6s
+  - Shield: 15s → 8s (value reduced to 80 from 100)
+
+### Enemy Changes
+- **Visual Updates**: New colors for better distinction
+  - Grunt: #ff4444 → #3a99e7 (blue)
+  - Dasher: #ff8800 → #9fe95a (green)
+  - Tank: #aa4444 → #756767 (gray)
+  - Shooter: #ff00ff → #6518ca (purple)
+- **Elite**: Now shoots projectiles, damage reduced: 100 → 65
+- **Tank**: Speed increased: 60 → 80
+
+### Boss Changes
+- **New Boss**: Level 5 "Cyber Drone" - Early boss encounter with 1200 HP
+- **Damage Buffs**: All bosses have increased damage output
+- **Final Boss** (Cyber Core): Speed 25 → 70, attack interval 2s → 1s
+- **Phase Threshold**: Enraged phase now at 45% HP (was 50%)
+
+### Files Modified
+- `entities/player.js`, `entities/enemy.js`, `entities/boss.js`
+- `game.js` (import updates, removed inline classes)
+- `systems/projectiles.js`, `systems/pickups.js` (now re-exports)
+- `config.js`
+
+### New Files
+- `entities/projectile.js`
+- `entities/pickup.js`
+
 ## Game Balance Update (2026-04-10)
 
 ### Player Changes

@@ -4,11 +4,22 @@ import { Enemy } from './enemy.js';
 
 // Boss configurations per level
 const BOSS_PATTERNS = [
-  // Level 15 - First boss
+  // Level 5 - First boss
+  {
+    name: 'Cyber Drone',
+    hp: 1200,
+    damage: 40,
+    speed: 60,
+    pattern: 'beam',
+    projectileCount: 12,
+    projectileSpeed: 80,
+    interval: 2.5
+  },
+  // Level 15 - Second boss
   {
     name: 'Cyber Drone Alpha',
     hp: 2000,
-    damage: 30,
+    damage: 95,
     speed: 60,
     pattern: 'swarm',
     projectileCount: 8,
@@ -75,11 +86,11 @@ const BOSS_PATTERNS = [
     name: 'Cyber Core',
     hp: 150000,
     damage: 300,
-    speed: 25,
+    speed: 70,
     pattern: 'crush',
     projectileCount: 3,
     projectileSpeed: 250,
-    interval: 2
+    interval: 1
   }
 ];
 
@@ -107,7 +118,7 @@ class Boss extends Enemy {
 
     // State
     this.phase = 1;
-    this.phaseThreshold = 0.5; // Switch phase at 50% HP
+    this.phaseThreshold = 0.45; // Switch phase at 45% HP
     this.shield = 0;
     this.attackTimer = 0;
     this.angle = 0;
