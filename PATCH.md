@@ -1,5 +1,43 @@
 # Patch History
 
+## 2026-04-13 - Skill System Implementation
+
+### New Skill System
+Each build now has 2 active skills with cooldowns, activated with keys 1 and 2:
+
+**Fighter:**
+- Healing Shot (6s): Heal 25% max HP
+- Dash (4s): Quick dash with brief invulnerability
+
+**Glass Cannon:**
+- Overload (15s): Double damage for 5 seconds
+- Teleport (12s): Teleport to random safe position
+
+**Tank:**
+- Shield (10s): Gain 100 shield
+- Ground Slam (8s): AOE damage to nearby enemies
+
+**Balanced:**
+- Shield (8s): Gain 80 shield
+- Adrenaline Rush (12s): 50% speed boost for 4 seconds
+
+**Sniper:**
+- Sniper Shot (10s): Guaranteed crit + piercing next shot
+- Smoke Screen (15s): Brief invisibility (3 seconds)
+
+**Berserker:**
+- Berserk Rage (12s): Max rage instantly
+- Whirlwind (10s): Spin attack for 2 seconds
+
+**Guardian:**
+- Shield (8s): Gain 80 shield
+- Divine Protection (20s): Heal 50% + damage immunity for 2 seconds
+
+### Files Modified
+- `entities/player.js` - Added 14 new skills, updated ability system
+- `game.js` - Added skill activation (keys 1/2), skill effect handling
+- `input.js` - Already supports key 1/2
+
 ## 2026-04-13 - Bug Fix & Graphics Update
 
 ### Bug Fixes

@@ -222,6 +222,14 @@ class Game {
       this.playerShoot();
     }
 
+    // Skill activation (keys 1 and 2)
+    if (this.input.isKeyPressed('1')) {
+      this.activateSkill(0);
+    }
+    if (this.input.isKeyPressed('2')) {
+      this.activateSkill(1);
+    }
+
     // Update projectiles
     this.projectiles = this.projectiles.filter(p => {
       const alive = p.update(deltaTime);
@@ -361,8 +369,17 @@ class Game {
   }
 
   playerShoot() {
+    let damage = this.player.getDamage();
+
+    // Apply overload bonus if active
+    const now = Date.now();
+    if (this.player.overloadActive && now < this.player.overloadEndTime) {
+      damage *= 2;
+    } else {
+      this.player.overloadActive = false;
+    }
+
     const center = this.player.getCenter();
-    const damage = this.player.getDamage();
 
     // Muzzle flash effect
     this.particles.spawnExplosion(center.x, center.y - 20, 5, '#ffff00', 0.1);
@@ -370,11 +387,15 @@ class Game {
     // Light recoil shake
     this.addShake(0.5);
 
+    // Check for piercing
+    const piercing = this.player.nextShotPiercing || false;
+    this.player.nextShotPiercing = false;
+
     // Base shot
     this.projectiles.push(new Projectile(
       center.x, center.y - 20,
       0, -400,
-      damage, '#ffff00', true, { size: 6 }
+      damage, '#ffff00', true, { size: 6, piercing }
     ));
 
     // Multishot
@@ -385,12 +406,79 @@ class Game {
         this.projectiles.push(new Projectile(
           center.x, center.y - 20,
           Math.sin(angle) * 400, -Math.cos(angle) * 400,
-          damage, '#ffff00', true, { size: 6 }
+          damage, '#ffff00', true, { size: 6, piercing }
         ));
       }
     }
 
     this.player.shootCooldown = 0.25;
+  }
+
+  activateSkill(slot) {
+    if (!this.player || !this.player.build.abilities[slot]) return;
+
+    const abilityName = this.player.build.abilities[slot];
+    const result = this.player.activateAbility(abilityName);
+
+    if (result && result.activated) {
+      const center = this.player.getCenter();
+
+      // Handle effects that need game context
+      switch (result.effect) {
+        case 'dash':
+          // Dash forward
+          const movement = this.input.getMovement();
+          const dashSpeed = 800;
+          if (movement.dx !== 0 || movement.dy !== 0) {
+            this.player.vx += movement.dx * dashSpeed;
+            this.player.vy += movement.dy * dashSpeed;
+          } else {
+            // Dash upward if not moving
+            this.player.vy -= dashSpeed;
+          }
+          // Trail effect
+          this.particles.spawnExplosion(center.x, center.y, 10, '#00ffff', 0.3);
+          break;
+
+        case 'teleport':
+          // Teleport to random safe position
+          this.player.x = Math.random() * (this.width - 100) + 50;
+          this.player.y = Math.random() * (this.height * 0.5) + this.height * 0.3;
+          this.particles.spawnExplosion(center.x, center.y, 15, '#ff00ff', 0.5);
+          break;
+
+        case 'aoe_damage':
+          // Deal damage to all nearby enemies
+          const aoeRadius = result.radius;
+          this.enemies.forEach(e => {
+            const dist = this.player.distanceTo(e);
+            if (dist < aoeRadius) {
+              e.takeDamage(result.damage * (1 - dist / aoeRadius));
+              if (e.dead) this.onKill(e);
+            }
+          });
+          // Visual effect
+          this.particles.spawnExplosion(center.x, center.y, 20, '#ff8800', 0.5);
+          this.addShake(2);
+          break;
+
+        case 'whirlwind':
+          // Whirlwind visual
+          this.particles.spawnExplosion(center.x, center.y, 15, '#ff0000', 0.5);
+          break;
+
+        case 'heal':
+        case 'shield':
+        case 'damage_boost':
+        case 'speed_boost':
+        case 'crit_shot':
+        case 'invisibility':
+        case 'max_rage':
+        case 'damage_immunity':
+          // These are handled internally by the player
+          break;
+      }
+    }
   }
 
   enemyShoot(enemy, target) {
@@ -576,13 +664,14 @@ class Game {
 
     // Abilities
     if (this.player && this.player.build) {
-      this.player.drawCooldowns(ctx, this.width - 150, this.height - 60);
+      this.player.drawCooldowns(ctx, this.width - 150, this.height - 100);
     }
 
     // Controls hint
     ctx.fillStyle = '#888';
     ctx.font = '12px monospace';
-    ctx.fillText('WASD/Arrows: Move | SPACE: Shoot', 10, this.height - 80);
+    ctx.textAlign = 'left';
+    ctx.fillText('WASD/Arrows: Move | SPACE: Shoot | 1/2: Skills', 10, this.height - 120);
   }
 
   renderMenu() {

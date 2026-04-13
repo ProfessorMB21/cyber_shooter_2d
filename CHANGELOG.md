@@ -2,6 +2,30 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Skill System Implementation (2026-04-13)
+
+### New Skill System
+Each build now has 2 active skills with cooldowns:
+- **Fighter**: Healing Shot, Dash
+- **Glass Cannon**: Overload, Teleport  
+- **Tank**: Shield, Ground Slam
+- **Balanced**: Shield, Adrenaline Rush
+- **Sniper**: Sniper Shot, Smoke Screen
+- **Berserker**: Berserk Rage, Whirlwind
+- **Guardian**: Shield, Divine Protection
+
+Skills activated with keys **1** and **2**.
+
+### Skill Details
+- Each skill has unique cooldown (4-20 seconds)
+- Skills have visual effects (particles, screen shake)
+- UI shows skill cooldowns with key labels [1] and [2]
+- Temporary effects (Overload, Speed Boost, etc.) auto-expire
+
+### Files Modified
+- `entities/player.js` - 14 new skills implemented
+- `game.js` - Skill activation, effect handling
+
 ## Bug Fix & Graphics Update (2026-04-13)
 
 ### Bug Fixes
