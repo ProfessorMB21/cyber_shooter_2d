@@ -1,5 +1,28 @@
 # Patch History
 
+## 2026-04-13 - Pause Feature & Skill Stats Display
+
+### Pause Feature
+- Added pause menu accessible with **ESC** or **P** keys
+- Pause menu shows current game stats (score, time, kills)
+- Can resume or restart from pause menu
+- Game renders frozen in background while paused
+
+### Skill Effects on Stats Board
+- Active skill effects now displayed on player stats board:
+  - **Overload**: Shows `(2x)` next to damage stat
+  - **Speed Boost**: Shows `(1.5x)` next to speed stat
+  - **Divine Protection**: Gold indicator with remaining time
+  - **Smoke Screen**: Grey indicator with remaining time
+  - **Whirlwind**: Red indicator with remaining time
+  - **Max Rage**: Red flame indicator for Berserker
+- Buffs show remaining duration in seconds
+- Buffed stats highlighted with color coding
+
+### Files Modified
+- `game.js` - Pause menu, skill effects display, stats board updates
+- `CLAUDE.md` - Documentation updates
+
 ## 2026-04-13 - Skill System Implementation
 
 ### New Skill System

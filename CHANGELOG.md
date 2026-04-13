@@ -2,6 +2,30 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Pause Feature & Skill Stats Display (2026-04-13)
+
+### Pause Feature
+- **Pause Menu**: Press ESC or P to pause/resume
+- **Stats Display**: Shows current score, time survived, and kills while paused
+- **Options**: Resume with ESC/P or restart with R
+- Visual: Semi-transparent overlay with game frozen in background
+
+### Skill Effects on Stats Board
+- **Overload**: Damage stat shows `(2x)` in orange when active
+- **Speed Boost**: Speed stat shows `(1.5x)` in cyan when active
+- **Active Buffs List**: Shows all active buffs with remaining time:
+  - Overload (lightning icon)
+  - Speed Boost (lightning icon)
+  - Divine Protection (shield icon)
+  - Invisibility/Smoke Screen (ghost icon)
+  - Whirlwind (tornado icon)
+  - Max Rage (flame icon)
+- Color-coded buff indicators with countdown timers
+
+### Files Modified
+- `game.js` - Pause menu, skill effects display
+- `CLAUDE.md` - Controls documentation
+
 ## Skill System Implementation (2026-04-13)
 
 ### New Skill System

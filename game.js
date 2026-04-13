@@ -178,6 +178,12 @@ class Game {
   }
 
   loop(timestamp) {
+    if (this.state === 'paused') {
+      this.renderPauseMenu();
+      requestAnimationFrame(this.loop);
+      return;
+    }
+
     if (this.state !== 'playing') {
       if (this.state === 'menu') {
         this.renderMenu();
@@ -189,6 +195,13 @@ class Game {
         this.renderLevelUp();
         requestAnimationFrame(this.loop);
       }
+      return;
+    }
+
+    // Check for pause
+    if (this.input.isKeyPressed('escape') || this.input.isKeyPressed('p')) {
+      this.state = 'paused';
+      requestAnimationFrame(this.loop);
       return;
     }
 
@@ -641,17 +654,94 @@ class Game {
     // Player stats
     if (this.player) {
       const p = this.player;
+      const now = Date.now();
+
+      // Calculate effective stats with buffs
+      let displayDamage = p.currentStats.damage;
+      let displaySpeed = p.currentStats.speed;
+
+      // Check for active buffs
+      const overloadActive = p.overloadActive && now < p.overloadEndTime;
+      const speedBoostActive = p.speedBoostActive && now < p.speedBoostEndTime;
+
+      if (overloadActive) displayDamage *= 2;
+      if (speedBoostActive) displaySpeed *= 1.5;
+
+      // Base stats display
       ctx.fillStyle = '#fff';
       ctx.font = '14px monospace';
+      ctx.textAlign = 'left';
       ctx.fillText(`HP: ${Math.floor(p.hp)}/${p.currentStats.maxHp}`, 10, this.height - 60);
-      ctx.fillText(`DMG: ${p.currentStats.damage}`, 10, this.height - 45);
-      ctx.fillText(`SPD: ${Math.floor(p.currentStats.speed)}`, 10, this.height - 30);
+
+      // Damage with buff indicator
+      if (overloadActive) {
+        ctx.fillStyle = '#ff8800'; // Orange for buffed damage
+        ctx.fillText(`DMG: ${Math.floor(displayDamage)} (2x)`, 10, this.height - 45);
+      } else {
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`DMG: ${Math.floor(displayDamage)}`, 10, this.height - 45);
+      }
+
+      // Speed with buff indicator
+      if (speedBoostActive) {
+        ctx.fillStyle = '#00ffff'; // Cyan for buffed speed
+        ctx.fillText(`SPD: ${Math.floor(displaySpeed)} (1.5x)`, 10, this.height - 30);
+      } else {
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`SPD: ${Math.floor(displaySpeed)}`, 10, this.height - 30);
+      }
+
+      ctx.fillStyle = '#fff';
       ctx.fillText(`LVL: ${p.level}`, 10, this.height - 15);
 
       // Shield
       if (p.shield > 0) {
         ctx.fillStyle = '#44f';
         ctx.fillText(`Shield: ${Math.floor(p.shield)}`, 120, this.height - 60);
+      }
+
+      // Active buffs list
+      let buffY = this.height - 135;
+      ctx.font = '12px monospace';
+
+      if (overloadActive) {
+        const remaining = Math.ceil((p.overloadEndTime - now) / 1000);
+        ctx.fillStyle = '#ff8800';
+        ctx.fillText(`⚡ OVERLOAD (${remaining}s)`, 10, buffY);
+        buffY -= 15;
+      }
+
+      if (speedBoostActive) {
+        const remaining = Math.ceil((p.speedBoostEndTime - now) / 1000);
+        ctx.fillStyle = '#00ffff';
+        ctx.fillText(`⚡ SPEED BOOST (${remaining}s)`, 10, buffY);
+        buffY -= 15;
+      }
+
+      if (p.divineProtectionActive && now < p.divineProtectionEndTime) {
+        const remaining = Math.ceil((p.divineProtectionEndTime - now) / 1000);
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(`🛡️ DIVINE (${remaining}s)`, 10, buffY);
+        buffY -= 15;
+      }
+
+      if (p.smokeScreenActive && now < p.smokeScreenEndTime) {
+        const remaining = Math.ceil((p.smokeScreenEndTime - now) / 1000);
+        ctx.fillStyle = '#888888';
+        ctx.fillText(`👻 INVISIBLE (${remaining}s)`, 10, buffY);
+        buffY -= 15;
+      }
+
+      if (p.whirlwindActive && now < p.whirlwindEndTime) {
+        const remaining = Math.ceil((p.whirlwindEndTime - now) / 1000);
+        ctx.fillStyle = '#ff0000';
+        ctx.fillText(`🌪️ WHIRLWIND (${remaining}s)`, 10, buffY);
+        buffY -= 15;
+      }
+
+      if (p.rage >= p.maxRage * 0.8 && p.buildName === 'berserker') {
+        ctx.fillStyle = '#ff0000';
+        ctx.fillText(`🔥 MAX RAGE`, 10, buffY);
       }
 
       // XP bar
@@ -671,7 +761,7 @@ class Game {
     ctx.fillStyle = '#888';
     ctx.font = '12px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('WASD/Arrows: Move | SPACE: Shoot | 1/2: Skills', 10, this.height - 120);
+    ctx.fillText('WASD: Move | SPACE: Shoot | 1/2: Skills | ESC/P: Pause', 10, this.height - 135);
   }
 
   renderMenu() {
@@ -839,6 +929,60 @@ class Game {
     ctx.fillStyle = '#ff0';
     ctx.font = '16px monospace';
     ctx.fillText(this.player.build.passive, this.width / 2, this.height / 2 + 90);
+  }
+
+  renderPauseMenu() {
+    const ctx = this.ctx;
+
+    // Keep rendering the game in background (frozen)
+    this.render();
+
+    // Semi-transparent dark overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, this.width, this.height);
+
+    // Pause menu container
+    const menuWidth = 400;
+    const menuHeight = 250;
+    const menuX = (this.width - menuWidth) / 2;
+    const menuY = (this.height - menuHeight) / 2;
+
+    // Menu background
+    ctx.fillStyle = 'rgba(20, 20, 30, 0.95)';
+    ctx.fillRect(menuX, menuY, menuWidth, menuHeight);
+
+    // Menu border
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(menuX, menuY, menuWidth, menuHeight);
+
+    // Title
+    ctx.fillStyle = '#0f0';
+    ctx.font = 'bold 36px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAUSED', this.width / 2, menuY + 50);
+
+    // Game stats
+    ctx.fillStyle = '#fff';
+    ctx.font = '16px monospace';
+    ctx.fillText(`Score: ${Math.floor(this.score)}`, this.width / 2, menuY + 90);
+    ctx.fillText(`Time: ${Math.floor(this.gameTime)}s`, this.width / 2, menuY + 115);
+    ctx.fillText(`Kills: ${this.kills}`, this.width / 2, menuY + 140);
+
+    // Instructions
+    ctx.fillStyle = '#888';
+    ctx.font = '14px monospace';
+    ctx.fillText('Press ESC or P to Resume', this.width / 2, menuY + 185);
+    ctx.fillText('Press R to Restart', this.width / 2, menuY + 210);
+
+    // Handle input
+    if (this.input.isKeyPressed('escape') || this.input.isKeyPressed('p')) {
+      this.state = 'playing';
+      this.lastTime = performance.now();
+    }
+    if (this.input.isKeyPressed('r')) {
+      this.state = 'menu';
+    }
   }
 }
 

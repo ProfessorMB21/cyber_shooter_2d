@@ -6,9 +6,9 @@ import { Entity } from '../systems/entity.js';
 const ENEMY_TYPES = {
   grunt: {
     name: 'Grunt',
-    hp: 150,        // Was 50 (3x)
-    damage: 35,     // Was 10 (3.5x)
-    speed: 120,     // Was 80 (1.5x)
+    hp: 150,        
+    damage: 25,     
+    speed: 120,     
     size: 12,
     color: '#3a99e7',
     xp: 10,
@@ -16,9 +16,9 @@ const ENEMY_TYPES = {
   },
   fast: {
     name: 'Fast',
-    hp: 80,         // Was 30 (2.7x)
-    damage: 25,     // Was 8 (3x)
-    speed: 250,     // Was 150 (1.7x)
+    hp: 80,         
+    damage: 18,     
+    speed: 250,     
     size: 10,
     color: '#9fe95a',
     xp: 15,
@@ -26,9 +26,9 @@ const ENEMY_TYPES = {
   },
   tank: {
     name: 'Tank',
-    hp: 450,        // Was 150 (3x)
-    damage: 60,     // Was 20 (3x)
-    speed: 80,      // Was 40 (1.5x)
+    hp: 450,        
+    damage: 20,     
+    speed: 80,      
     size: 18,
     color: '#756767',
     xp: 30,
@@ -36,9 +36,9 @@ const ENEMY_TYPES = {
   },
   shooter: {
     name: 'Shooter',
-    hp: 120,        // Was 40 (3x)
-    damage: 45,     // Was 15 (3x)
-    speed: 100,     // Was 60 (1.7x)
+    hp: 120,        
+    damage: 25,     
+    speed: 100,     
     size: 12,
     color: '#6518ca',
     xp: 20,
@@ -47,9 +47,9 @@ const ENEMY_TYPES = {
   },
   elite: {
     name: 'Elite',
-    hp: 900,        // Was 300 (3x)
-    damage: 65,    // Was 35 (2.9x)
-    speed: 120,     // Was 70 (1.7x)
+    hp: 900,        
+    damage: 45,    
+    speed: 120,    
     size: 16,
     color: '#aa0000',
     xp: 100,
