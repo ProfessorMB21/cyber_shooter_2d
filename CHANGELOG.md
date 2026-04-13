@@ -2,6 +2,31 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Bug Fix & Graphics Update (2026-04-13)
+
+### Bug Fixes
+- **Canvas Resize Bug Fixed**: Player and enemies now work correctly on the right half of the screen
+  - Issue: Game dimensions weren't syncing with canvas on window resize
+  - Fix: Updated resize handler to properly update game.width/game.height
+
+### Graphics Improvements
+- **Screen Shake**: Subtle shake effect on damage, kills, and boss kills
+- **Parallax Background**: Starfield with depth and glow effects
+- **Muzzle Flash**: Visual effect when player shoots
+- **Engine Thruster**: Animated thruster on player ship
+- **Glow Effects**: All entities now have glowing visuals
+- **Improved Trails**: Better projectile trails with fading
+- **Background Gradient**: Deep space gradient
+
+### Files Modified
+- `main.js` - Fixed resize bug
+- `game.js` - Screen shake, stars, muzzle flashes
+- `entities/player.js` - Glow, thruster
+- `entities/enemy.js` - Glow
+- `entities/boss.js` - Glow
+- `entities/projectile.js` - Glow, trails
+- `entities/pickup.js` - Glow
+
 ## Code Refactoring & Balance Update (2026-04-13)
 
 ### Architecture Improvements

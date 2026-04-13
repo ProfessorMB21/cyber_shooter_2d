@@ -162,6 +162,8 @@ class Enemy extends Entity {
   draw(ctx) {
     const center = this.getCenter();
 
+    ctx.save();
+
     // Hit flash
     if (this.hitFlash > 0) {
       ctx.fillStyle = '#ffffff';
@@ -172,22 +174,38 @@ class Enemy extends Entity {
       ctx.globalAlpha = 1;
     }
 
-    // Body
-    ctx.fillStyle = this.color;
+    // Body with glow
     const pulseScale = 1 + Math.sin(this.pulse) * 0.05;
+
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = this.color;
+    ctx.fillStyle = this.color;
 
     ctx.beginPath();
     ctx.arc(center.x, center.y, (this.width / 2) * pulseScale, 0, Math.PI * 2);
     ctx.fill();
 
-    // Shooter indicator
+    // Inner core
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, (this.width / 3) * pulseScale, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // Shooter indicator - glowing ring
     if (this.shoots) {
       ctx.strokeStyle = '#ff00ff';
       ctx.lineWidth = 2;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = '#ff00ff';
       ctx.beginPath();
       ctx.arc(center.x, center.y, this.width * 0.7, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.shadowBlur = 0;
     }
+
+    ctx.restore();
 
     // Health bar for tank/elite enemies
     if (this.type === 'tank' || this.type === 'elite') {

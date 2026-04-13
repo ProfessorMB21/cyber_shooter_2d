@@ -27,13 +27,22 @@ function init() {
     loadingDiv.style.display = 'none';
   }
 
-  // Handle window resize
+  // Handle window resize - Keep internal width/height in sync with canvas
   window.addEventListener('resize', () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    game.width = canvas.width;
-    game.height = canvas.height;
-    game.particles.resize(canvas.width, canvas.height);
+    const newWidth = window.innerWidth;
+    const newHeight = window.innerHeight;
+
+    canvas.width = newWidth;
+    canvas.height = newHeight;
+
+    // Update game dimensions
+    game.width = newWidth;
+    game.height = newHeight;
+
+    // Update particle system bounds
+    if (game.particles && game.particles.resize) {
+      game.particles.resize(newWidth, newHeight);
+    }
   });
 
   // Start menu loop

@@ -419,15 +419,21 @@ class Player extends Entity {
     return true;
   }
 
-  // Draw player
+  // Draw player with glow effects
   draw(ctx) {
+    const center = this.getCenter();
+
     // Shield glow
     if (this.shield > 0) {
-      ctx.strokeStyle = '#4444ff';
+      ctx.save();
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#4444ff';
+      ctx.strokeStyle = '#6666ff';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(this.getCenter().x, this.getCenter().y, 22, 0, Math.PI * 2);
+      ctx.arc(center.x, center.y, 22, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.restore();
     }
 
     // Invulnerability flash
@@ -435,20 +441,40 @@ class Player extends Entity {
       ctx.globalAlpha = 0.5;
     }
 
-    // Body
+    // Engine thruster effect
+    ctx.save();
+    ctx.fillStyle = `rgba(100, 200, 255, ${0.5 + Math.sin(Date.now() / 50) * 0.2})`;
+    ctx.beginPath();
+    ctx.moveTo(center.x, this.y + this.height + 5);
+    ctx.lineTo(center.x - 8, this.y + this.height + 15);
+    ctx.lineTo(center.x + 8, this.y + this.height + 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Body with glow
+    ctx.save();
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = this.color;
     ctx.fillStyle = this.color;
     ctx.fillRect(this.x, this.y, this.width, this.height);
 
+    // Inner core
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(this.x + 8, this.y + 8, this.width - 16, this.height - 16);
+    ctx.restore();
+
     // Berserker rage indicator
     if (this.buildName === 'berserker' && this.rage > 0) {
-      ctx.fillStyle = `rgba(255, 0, 0, ${this.rage / this.maxRage * 0.5})`;
+      ctx.save();
+      ctx.fillStyle = `rgba(255, 0, 0, ${this.rage / this.maxRage * 0.6})`;
       ctx.fillRect(this.x, this.y, this.width, this.height);
+      ctx.restore();
     }
 
     ctx.globalAlpha = 1;
 
     // Health bar
-    const center = this.getCenter();
     this.drawHealthBar(ctx, center.x, this.y - 10, 40, 6);
 
     // Shield bar (max width capped)

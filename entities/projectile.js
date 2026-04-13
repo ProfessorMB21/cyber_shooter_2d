@@ -53,18 +53,55 @@ class Projectile {
   }
 
   draw(ctx) {
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.save();
 
-    // Trail effect
-    if (!this.aoe) {
-      ctx.fillStyle = this.color + '44';
+    // AOE effect (crush attack)
+    if (this.aoe) {
+      ctx.fillStyle = this.color + '33';
       ctx.beginPath();
-      ctx.arc(this.x - this.vx * 0.02, this.y - this.vy * 0.02, this.size * 0.7, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
       ctx.fill();
+
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      // Regular projectile with glow
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = this.color;
+
+      // Core
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outer glow
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Trail effect
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = this.color;
+      const trailLength = Math.min(20, Math.sqrt(this.vx * this.vx + this.vy * this.vy) * 0.05);
+      for (let i = 1; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.arc(
+          this.x - this.vx * 0.015 * i,
+          this.y - this.vy * 0.015 * i,
+          this.size * (1 - i * 0.2),
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
     }
+
+    ctx.restore();
   }
 }
 

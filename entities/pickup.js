@@ -83,19 +83,33 @@ class Pickup {
   draw(ctx) {
     const bobOffset = Math.sin(this.bob) * 3;
 
-    // Glow
-    ctx.fillStyle = this.color + '33';
+    ctx.save();
+
+    // Outer glow
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = this.color;
+    ctx.fillStyle = this.color + '44';
     ctx.beginPath();
     ctx.arc(this.x, this.y + bobOffset, 18, 0, Math.PI * 2);
     ctx.fill();
 
+    // Inner glow
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = this.color + '66';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y + bobOffset, 12, 0, Math.PI * 2);
+    ctx.fill();
+
     // Core
+    ctx.shadowBlur = 5;
     ctx.fillStyle = this.color;
-    ctx.fillRect(this.x - 10, this.y - 10 + bobOffset, 20, 20);
+    ctx.fillRect(this.x - 8, this.y - 8 + bobOffset, 16, 16);
+
+    ctx.restore();
 
     // Icon
     ctx.fillStyle = '#000';
-    ctx.font = '12px monospace';
+    ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     const icon = this.type === 'health' ? '+' : this.type === 'shield' ? 'S' : this.type === 'speed' ? '>' : '!';
     ctx.fillText(icon, this.x, this.y + 4 + bobOffset);

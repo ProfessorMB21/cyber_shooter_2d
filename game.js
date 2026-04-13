@@ -59,8 +59,94 @@ class Game {
     // Build names
     this.buildNames = Object.keys(BUILDS);
 
+    // Screen shake effect
+    this.shakeAmount = 0;
+    this.shakeDecay = 5;
+
+    // Camera offset for shake
+    this.cameraX = 0;
+    this.cameraY = 0;
+
+    // Background stars
+    this.stars = this.generateStars();
+
     // Bind loop
     this.loop = this.loop.bind(this);
+  }
+
+  // Generate background stars
+  generateStars() {
+    const stars = [];
+    for (let i = 0; i < 150; i++) {
+      stars.push({
+        x: Math.random() * this.width,
+        y: Math.random() * this.height,
+        size: Math.random() * 2 + 0.5,
+        speed: Math.random() * 0.5 + 0.1,
+        brightness: Math.random()
+      });
+    }
+    return stars;
+  }
+
+  // Trigger screen shake
+  addShake(amount) {
+    this.shakeAmount = Math.min(this.shakeAmount + amount, 20);
+  }
+
+  // Update screen shake
+  updateShake(deltaTime) {
+    if (this.shakeAmount > 0) {
+      this.cameraX = (Math.random() - 0.5) * this.shakeAmount;
+      this.cameraY = (Math.random() - 0.5) * this.shakeAmount;
+      this.shakeAmount = Math.max(0, this.shakeAmount - this.shakeDecay * deltaTime);
+    } else {
+      this.cameraX = 0;
+      this.cameraY = 0;
+    }
+  }
+
+  // Update background stars
+  updateStars(deltaTime) {
+    this.stars.forEach(star => {
+      star.y += star.speed * 60 * deltaTime;
+      if (star.y > this.height) {
+        star.y = 0;
+        star.x = Math.random() * this.width;
+      }
+    });
+  }
+
+  // Draw background with parallax stars
+  drawBackground(ctx) {
+    // Deep space gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, this.height);
+    gradient.addColorStop(0, '#0a0a1a');
+    gradient.addColorStop(0.5, '#0a0a0f');
+    gradient.addColorStop(1, '#050510');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, this.width, this.height);
+
+    // Draw stars with glow
+    ctx.save();
+    this.stars.forEach(star => {
+      const alpha = 0.3 + star.brightness * 0.7;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Star glow for larger stars
+      if (star.size > 1.5) {
+        ctx.globalAlpha = alpha * 0.3;
+        ctx.fillStyle = '#88ccff';
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    ctx.restore();
   }
 
   start(buildName, difficulty) {
@@ -121,6 +207,10 @@ class Game {
     if (this.comboTimer <= 0) {
       this.combo = 0;
     }
+
+    // Update visual effects
+    this.updateShake(deltaTime);
+    this.updateStars(deltaTime);
 
     const mult = config.difficulties[this.difficulty];
 
@@ -185,8 +275,10 @@ class Game {
           if (dx * dx + dy * dy < (p.size + 15) ** 2) {
             if (p.aoe) {
               this.player.takeDamage(p.damage * deltaTime * 5);
+              this.addShake(1.5); // Screen shake on AOE hit
             } else {
               this.player.takeDamage(p.damage);
+              this.addShake(1); // Screen shake on hit
               p.dead = true;
             }
           }
@@ -271,6 +363,12 @@ class Game {
   playerShoot() {
     const center = this.player.getCenter();
     const damage = this.player.getDamage();
+
+    // Muzzle flash effect
+    this.particles.spawnExplosion(center.x, center.y - 20, 5, '#ffff00', 0.1);
+
+    // Light recoil shake
+    this.addShake(0.5);
 
     // Base shot
     this.projectiles.push(new Projectile(
@@ -358,7 +456,10 @@ class Game {
 
     // Spawn particles
     const center = enemy.getCenter();
-    this.particles.spawnExplosion(center.x, center.y, 8, enemy.color);
+    this.particles.spawnExplosion(center.x, center.y, 12, enemy.color);
+
+    // Small screen shake on kill
+    this.addShake(0.5);
 
     // Random pickup drop (reduced from 10% to 3%)
     if (Math.random() < 0.03) {
@@ -377,7 +478,10 @@ class Game {
 
     // Lots of particles
     const center = boss.getCenter();
-    this.particles.spawnExplosion(center.x, center.y, 30, '#ff00ff');
+    this.particles.spawnExplosion(center.x, center.y, 50, '#ff00ff');
+
+    // Strong screen shake on boss kill
+    this.addShake(3);
 
     // Guaranteed pickups
     for (let i = 0; i < 3; i++) {
@@ -394,9 +498,12 @@ class Game {
   render() {
     const ctx = this.ctx;
 
-    // Clear
-    ctx.fillStyle = '#0a0a0f';
-    ctx.fillRect(0, 0, this.width, this.height);
+    // Clear and draw background
+    this.drawBackground(ctx);
+
+    // Apply camera shake
+    ctx.save();
+    ctx.translate(this.cameraX, this.cameraY);
 
     // Draw particles (background)
     this.particles.draw(ctx);
@@ -420,7 +527,9 @@ class Game {
 
     // Draw particles (foreground)
 
-    // UI
+    ctx.restore();
+
+    // UI (not affected by shake)
     this.renderUI(ctx);
   }
 

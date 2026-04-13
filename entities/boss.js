@@ -312,8 +312,12 @@ class Boss extends Enemy {
   draw(ctx) {
     const center = this.getCenter();
 
-    // Phase 2 aura
+    ctx.save();
+
+    // Phase 2 aura with glow
     if (this.phase === 2) {
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#ff0000';
       ctx.strokeStyle = '#ff0000';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -321,26 +325,34 @@ class Boss extends Enemy {
       ctx.stroke();
     }
 
-    // Shield
+    // Shield with glow
     if (this.shield > 0) {
-      ctx.strokeStyle = '#4444ff';
-      ctx.lineWidth = 2;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#4444ff';
+      ctx.strokeStyle = '#6666ff';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(center.x, center.y, 40, 0, Math.PI * 2);
       ctx.stroke();
     }
 
-    // Body
+    // Body with glow
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = this.color;
     ctx.fillStyle = this.color;
     ctx.beginPath();
     ctx.arc(center.x, center.y, 25, 0, Math.PI * 2);
     ctx.fill();
 
     // Inner core
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = this.phase === 2 ? '#ff00ff' : '#ff8888';
     ctx.fillStyle = this.phase === 2 ? '#ff00ff' : '#ff8888';
     ctx.beginPath();
     ctx.arc(center.x, center.y, 15, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.restore();
 
     // Health bar
     const barWidth = 80;

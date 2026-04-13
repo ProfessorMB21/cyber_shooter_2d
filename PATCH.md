@@ -1,5 +1,31 @@
 # Patch History
 
+## 2026-04-13 - Bug Fix & Graphics Update
+
+### Bug Fixes
+- **Canvas Resize Bug Fixed**: Player/enemies now work correctly on the right half of the screen
+  - Root cause: Game dimensions not syncing with canvas on window resize
+  - Fix: Updated resize handler in main.js to properly update game.width/game.height
+
+### Graphics Improvements
+- **Screen Shake**: Added subtle screen shake on damage, kills, and boss kills
+- **Background Stars**: Parallax starfield with glow effects
+- **Muzzle Flash**: Visual effect when player shoots
+- **Engine Thruster**: Animated thruster effect on player ship
+- **Glow Effects**: All entities (player, enemies, bosses, projectiles, pickups) now have glow
+- **Improved Trails**: Better projectile trails with fading segments
+- **AOE Visualization**: Improved crush attack AOE effect
+- **Background Gradient**: Deep space gradient instead of solid color
+
+### Files Modified
+- `main.js` - Fixed resize handler bug
+- `game.js` - Added screen shake, background stars, muzzle flashes
+- `entities/player.js` - Added glow effects, engine thruster
+- `entities/enemy.js` - Added glow effects
+- `entities/boss.js` - Added glow effects
+- `entities/projectile.js` - Added glow, improved trails
+- `entities/pickup.js` - Added glow effects
+
 ## 2026-04-13 - Code Refactoring & Balance Update
 
 ### Architecture Changes
