@@ -1,9 +1,11 @@
 // Pickup Entity
 
-// Stat caps (matching player.js STAT_CAPS)
-const MAX_SPEED = 300;
-const MAX_SHIELD = 150;
-const MAX_DAMAGE = 800;
+import config from '../config.js';
+
+// Use stat caps from config
+const MAX_SPEED = config.STAT_CAPS.maxSpeed;
+const MAX_SHIELD = config.STAT_CAPS.maxShield;
+const MAX_DAMAGE = config.STAT_CAPS.maxDamage;
 
 class Pickup {
   constructor(x, y, type) {
@@ -15,27 +17,10 @@ class Pickup {
     this.height = 24;
     this.bob = 0;
 
-    switch (type) {
-      case 'health':
-        this.value = 20;    // Reduced from 50
-        this.color = '#44ff44';
-        break;
-      case 'shield':
-        this.value = 10;    // Reduced from 25
-        this.color = '#4444ff';
-        break;
-      case 'speed':
-        this.value = 5;     // Reduced from 20
-        this.color = '#ffff44';
-        break;
-      case 'damage':
-        this.value = 2;     // Reduced from 5
-        this.color = '#ff4444';
-        break;
-      default:
-        this.value = 5;
-        this.color = '#ffffff';
-    }
+    // Get pickup values from config
+    const pickupConfig = config.pickups[type] || { value: 5, color: '#ffffff' };
+    this.value = pickupConfig.value;
+    this.color = pickupConfig.color;
   }
 
   update(deltaTime, player) {

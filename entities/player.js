@@ -1,163 +1,25 @@
 // Player Entity with Stats and Level System
 
 import { Entity } from '../systems/entity.js';
+import config from '../config.js';
 
-// Player Builds Configuration - NERFED stats
-const BUILDS = {
-  fighter: {
-    name: 'Fighter',
-    description: 'Balanced with high health and damage',
-    color: '#00ff00',
-    stats: {
-      hp: 350,
-      maxHp: 350,
-      damage: 12,
-      speed: 2.5,
-      armor: 15,
-      evasion: 5,
-      criticalChance: 0,
-      criticalDamage: 1.0,
-      regen: 1,
-      cooldown: 1
-    },
-    abilities: ['HEALING SHOT', 'DASH'],
-    passive: 'Toughen Up - 8% HP gain per level'
-  },
-  glass_cannon: {
-    name: 'Glass Cannon',
-    description: 'Extreme damage but fragile',
-    color: '#ff00ff',
-    stats: {
-      hp: 200,
-      maxHp: 200,
-      damage: 35,
-      speed: 3.5,
-      armor: 8,
-      evasion: 15,
-      criticalChance: 0.20,
-      criticalDamage: 2.0,
-      regen: 0.5,
-      cooldown: 1
-    },
-    abilities: ['OVERLOAD', 'TELEPORT'],
-    passive: 'Overclock - 10% damage per level'
-  },
-  tank: {
-    name: 'Tank',
-    description: 'Massive health pool, slow',
-    color: '#4444ff',
-    stats: {
-      hp: 550,
-      maxHp: 550,
-      damage: 8,
-      speed: 1.8,
-      armor: 45,
-      evasion: 0,
-      criticalChance: 0,
-      criticalDamage: 0,
-      regen: 1.5,
-      cooldown: 1
-    },
-    abilities: ['SHIELD', 'GROUND SLAM'],
-    passive: 'Iron Skin - 12% HP gain per level'
-  },
-  balanced: {
-    name: 'Balanced',
-    description: 'Versatile all-rounder',
-    color: '#ffff00',
-    stats: {
-      hp: 300,
-      maxHp: 300,
-      damage: 15,
-      speed: 3,
-      armor: 22,
-      evasion: 12,
-      criticalChance: 0.10,
-      criticalDamage: 1.5,
-      regen: 1,
-      cooldown: 1
-    },
-    abilities: ['SHIELD', 'ADRENALINE RUSH'],
-    passive: 'Adaptability - 6% all stats per level'
-  },
-  sniper: {
-    name: 'Sniper',
-    description: 'High crit chance, precision attacks',
-    color: '#00ffff',
-    stats: {
-      hp: 220,
-      maxHp: 220,
-      damage: 14,
-      speed: 3,
-      armor: 10,
-      evasion: 20,
-      criticalChance: 0.25,
-      criticalDamage: 2.5,
-      regen: 0.8,
-      cooldown: 1
-    },
-    abilities: ['SNIPER SHOT', 'SMOKE SCREEN'],
-    passive: 'Sharpshooter - 8% crit chance per level'
-  },
-  berserker: {
-    name: 'Berserker',
-    description: 'Rage builds over time',
-    color: '#ff0000',
-    stats: {
-      hp: 320,
-      maxHp: 320,
-      damage: 18,
-      speed: 3.2,
-      armor: 12,
-      evasion: 10,
-      criticalChance: 0.18,
-      criticalDamage: 2.2,
-      regen: 1,
-      cooldown: 1
-    },
-    abilities: ['BERSERK RAGE', 'WHIRLWIND'],
-    passive: 'Adrenaline - 8% damage per rage, max 100%'
-  },
-  guardian: {
-    name: 'Guardian',
-    description: 'High armor, support capabilities',
-    color: '#888888',
-    stats: {
-      hp: 450,
-      maxHp: 450,
-      damage: 10,
-      speed: 2.2,
-      armor: 40,
-      evasion: 8,
-      criticalChance: 0,
-      criticalDamage: 0,
-      regen: 1.5,
-      cooldown: 1
-    },
-    abilities: ['SHIELD', 'DIVINE PROTECTION'],
-    passive: 'Protector - 10% armor per level'
-  }
-};
+// Extract constants from config
+const SPEED_SCALE_FACTOR = config.SPEED_SCALE_FACTOR;
+const STAT_CAPS = config.STAT_CAPS;
+const STAT_GROWTH = config.STAT_GROWTH;
 
-// Stat scaling factors
-const SPEED_SCALE_FACTOR = 30;  // Speed multiplier for gameplay (reduced from 80)
-
-// Stat caps
-const STAT_CAPS = {
-  maxSpeed: 300,      // Maximum speed player can achieve (capped)
-  maxShield: 150,     // Maximum shield cap (reduced from 200)
-  maxHp: 1500,        // Maximum HP cap (reduced from 2000)
-  maxDamage: 210      // Maximum damage cap
-};
-
-// Stat growth per level
-const STAT_GROWTH = {
-  hpMultiplier: 1.2,
-  damageMultiplier: 1.08,
-  armorMultiplier: 1.05,
-  speedMultiplier: 1.02,
-  cap: 100
-};
+// Transform config builds to BUILDS format used by the game
+const BUILDS = {};
+config.builds.forEach(build => {
+  BUILDS[build.name] = {
+    name: build.display,
+    description: build.description,
+    color: build.color,
+    stats: { ...build.stats },
+    abilities: build.abilities,
+    passive: build.passive
+  };
+});
 
 class Player extends Entity {
   constructor(buildName, x, y) {
@@ -218,28 +80,28 @@ class Player extends Entity {
     // Apply build-specific passive
     switch (this.buildName) {
       case 'fighter':
-        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.1));
+        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.08));
         break;
       case 'glass_cannon':
-        this.currentStats.damage = Math.floor(this.baseStats.damage * (1 + (this.level - 1) * 0.12));
+        this.currentStats.damage = Math.floor(this.baseStats.damage * (1 + (this.level - 1) * 0.10));
         break;
       case 'tank':
-        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.15));
+        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.12));
         this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.05));
         break;
       case 'balanced':
-        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.08));
-        this.currentStats.damage = Math.floor(this.baseStats.damage * (1 + (this.level - 1) * 0.08));
-        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.08));
+        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.06));
+        this.currentStats.damage = Math.floor(this.baseStats.damage * (1 + (this.level - 1) * 0.06));
+        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.06));
         break;
       case 'sniper':
-        this.criticalChance = Math.min(1, this.baseStats.criticalChance + (this.level - 1) * 0.1);
+        this.criticalChance = Math.min(1, this.baseStats.criticalChance + (this.level - 1) * 0.08);
         break;
       case 'berserker':
         // Rage-based scaling applied during update
         break;
       case 'guardian':
-        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.12));
+        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.10));
         break;
     }
 

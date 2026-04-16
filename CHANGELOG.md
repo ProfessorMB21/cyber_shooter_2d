@@ -2,6 +2,53 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Codebase Consistency Update (2026-04-16)
+
+### Configuration Centralization
+- **Single Source of Truth**: All game balance values now come from `config.js`
+  - Player build stats (hp, damage, speed, armor, etc.)
+  - Enemy type stats (hp, damage, speed, xp values)
+  - Stat caps (maxSpeed, maxShield, maxHp, maxDamage)
+  - Speed scaling factor (SPEED_SCALE_FACTOR: 30)
+  - Stat growth multipliers per level
+
+### Updated Config Values
+- **config.js** now contains the actual gameplay values (nerfed stats from recent balance):
+  - Fighter: 350 HP, 12 damage (was 500/20)
+  - Glass Cannon: 200 HP, 35 damage (was 280/65)
+  - Tank: 550 HP, 8 damage (was 800/15)
+  - All 7 builds updated with correct values
+- **Enemy types** added to config with current buffed stats:
+  - Grunt: 150 HP, 25 damage
+  - Fast: 80 HP, 250 speed
+  - Tank: 450 HP, 20 damage
+  - Shooter/Elite: Updated values
+- **Pickup values** in config match gameplay:
+  - Health: 20 (was 50)
+  - Shield: 10 (was 25)
+  - Speed: 5 (was 20)
+  - Damage: 2 (was 5)
+
+### Code Refactoring
+- **player.js**: Now imports `BUILDS`, `STAT_CAPS`, `STAT_GROWTH`, `SPEED_SCALE_FACTOR` from config
+- **enemy.js**: Now imports `ENEMY_TYPES` from config
+- **pickup.js**: Now imports `STAT_CAPS` from config for pickup value caps
+- All stat constants defined once in config, used everywhere
+
+### Projectile Bounds Fix
+- **projectile.js**: Replaced hardcoded magic numbers (`-50` to `850/650`) with configurable bounds
+- Bounds now default to `-100` to `2000x1500` to support larger screens
+- Can be overridden per projectile via `options.bounds`
+
+### Files Modified
+- `config.js` - Added all gameplay values, stat caps, enemy types
+- `entities/player.js` - Now imports from config instead of hardcoding
+- `entities/enemy.js` - Now imports enemy types from config
+- `entities/pickup.js` - Now imports stat caps from config
+- `entities/projectile.js` - Fixed hardcoded bounds
+- `entities.js` - Updated exports
+- `CHANGELOG.md` - This update
+
 ## Pause Feature & Skill Stats Display (2026-04-13)
 
 ### Pause Feature

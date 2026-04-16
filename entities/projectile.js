@@ -18,6 +18,14 @@ class Projectile {
     this.duration = options.duration || 0;
     this.hits = [];
 
+    // Bounds configuration - larger than typical canvas for safety
+    this.bounds = options.bounds || {
+      minX: -100,
+      maxX: 2000,
+      minY: -100,
+      maxY: 1500
+    };
+
     if (this.aoe) {
       this.size = 0;
     }
@@ -42,8 +50,9 @@ class Projectile {
       }
     }
 
-    // Out of bounds
-    if (this.x < -50 || this.x > 850 || this.y < -50 || this.y > 650) {
+    // Out of bounds check
+    if (this.x < this.bounds.minX || this.x > this.bounds.maxX ||
+        this.y < this.bounds.minY || this.y > this.bounds.maxY) {
       if (!this.aoe) {
         this.dead = true;
       }

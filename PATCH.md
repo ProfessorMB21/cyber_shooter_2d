@@ -1,5 +1,25 @@
 # Patch History
 
+## 2026-04-16 - Codebase Consistency Update
+
+### Configuration Centralization
+**Goal**: Single source of truth for all game balance values
+
+**Changes**:
+- Moved all player build stats to `config.js`
+- Moved all enemy type stats to `config.js`
+- Added `STAT_CAPS`, `STAT_GROWTH`, `SPEED_SCALE_FACTOR` to config
+- Updated all entity files to import from config
+
+**Files Modified**:
+- `config.js` - Now contains all gameplay values
+- `entities/player.js` - Imports builds from config
+- `entities/enemy.js` - Imports enemy types from config
+- `entities/pickup.js` - Imports stat caps from config
+- `entities/projectile.js` - Fixed hardcoded bounds
+
+**Impact**: No gameplay changes - values remain the same, just centralized
+
 ## 2026-04-13 - Pause Feature & Skill Stats Display
 
 ### Pause Feature

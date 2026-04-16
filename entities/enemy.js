@@ -37,7 +37,7 @@ const ENEMY_TYPES = {
   shooter: {
     name: 'Shooter',
     hp: 120,        
-    damage: 25,     
+    damage: 15,     
     speed: 100,     
     size: 12,
     color: '#6518ca',
@@ -47,8 +47,8 @@ const ENEMY_TYPES = {
   },
   elite: {
     name: 'Elite',
-    hp: 900,        
-    damage: 45,    
+    hp: 550,        
+    damage: 20,    
     speed: 120,    
     size: 16,
     color: '#aa0000',
