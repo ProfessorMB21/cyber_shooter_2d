@@ -1,11 +1,10 @@
 // Pickup Entity
 
-import config from '../config.js';
+import { PICKUPS, STAT_CAPS } from '../config/index.js';
 
-// Use stat caps from config
-const MAX_SPEED = config.STAT_CAPS.maxSpeed;
-const MAX_SHIELD = config.STAT_CAPS.maxShield;
-const MAX_DAMAGE = config.STAT_CAPS.maxDamage;
+const MAX_SPEED = STAT_CAPS.maxSpeed;
+const MAX_SHIELD = STAT_CAPS.maxShield;
+const MAX_DAMAGE = STAT_CAPS.maxDamage;
 
 class Pickup {
   constructor(x, y, type) {
@@ -18,7 +17,7 @@ class Pickup {
     this.bob = 0;
 
     // Get pickup values from config
-    const pickupConfig = config.pickups[type] || { value: 5, color: '#ffffff' };
+    const pickupConfig = PICKUPS[type] || { value: 5, color: '#ffffff' };
     this.value = pickupConfig.value;
     this.color = pickupConfig.color;
   }
@@ -101,4 +100,37 @@ class Pickup {
   }
 }
 
-export { Pickup, MAX_SPEED, MAX_SHIELD, MAX_DAMAGE };
+class PickupManager {
+  constructor(game, config) {
+    this.game = game;
+    this.config = config;
+    this.pickups = [];
+  }
+
+  update(deltaTime) {
+    // Update all pickups
+    this.pickups = this.pickups.filter(p => {
+      const alive = p.update(deltaTime, this.game.player);
+      if (!alive && this.game.particles) {
+        this.game.particles.spawnExplosion(p.x, p.y, 5, p.color);
+      }
+      return alive;
+    });
+  }
+
+  add(x, y, type) {
+    const pickup = new Pickup(x, y, type);
+    this.pickups.push(pickup);
+    return pickup;
+  }
+
+  get() {
+    return this.pickups;
+  }
+
+  clear() {
+    this.pickups = [];
+  }
+}
+
+export { Pickup, PickupManager, MAX_SPEED, MAX_SHIELD, MAX_DAMAGE };

@@ -1,62 +1,7 @@
 // Enemy Entity
 
 import { Entity } from '../systems/entity.js';
-
-// Enemy types - BUFFED for extreme difficulty
-const ENEMY_TYPES = {
-  grunt: {
-    name: 'Grunt',
-    hp: 150,        
-    damage: 25,     
-    speed: 120,     
-    size: 12,
-    color: '#3a99e7',
-    xp: 10,
-    score: 10
-  },
-  fast: {
-    name: 'Fast',
-    hp: 80,         
-    damage: 18,     
-    speed: 250,     
-    size: 10,
-    color: '#9fe95a',
-    xp: 15,
-    score: 15
-  },
-  tank: {
-    name: 'Tank',
-    hp: 450,        
-    damage: 20,     
-    speed: 80,      
-    size: 18,
-    color: '#756767',
-    xp: 30,
-    score: 30
-  },
-  shooter: {
-    name: 'Shooter',
-    hp: 120,        
-    damage: 15,     
-    speed: 100,     
-    size: 12,
-    color: '#6518ca',
-    xp: 20,
-    score: 20,
-    shoots: true
-  },
-  elite: {
-    name: 'Elite',
-    hp: 550,        
-    damage: 20,    
-    speed: 120,    
-    size: 16,
-    color: '#aa0000',
-    xp: 100,
-    score: 100,
-    shoots: true
-  }
-};
+import { ENEMY_TYPES } from '../config/index.js';
 
 class Enemy extends Entity {
   constructor(type, x, y, difficultyMultiplier = 1) {

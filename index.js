@@ -1,6 +1,6 @@
 // Main Exports - Cyber Shooter Game
 
-import config from './config.js';
+import config from './config/index.js';
 import { Game } from './game.js';
 import { InputHandler } from './input.js';
 
