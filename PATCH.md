@@ -1,5 +1,32 @@
 # Patch History
 
+## 2026-04-21 - Game Startup Fix
+
+### Critical Bug Fix
+**Issue**: Game not starting properly due to timing issues with DOM initialization and scene rendering
+
+**Changes**:
+- Fixed timing issues with canvas initialization and event listener attachment
+- Corrected initial timestamp initialization to prevent large deltaTimes on first frame
+- Fixed scene rendering parameter passing for proper menu display
+- Improved game loop initialization with proper context binding
+
+**Technical Details**:
+- Added setTimeout delays in main.js to ensure canvas is properly added to DOM before InputHandler attaches event listeners
+- Modified InputHandler constructor to delay event listener setup
+- Changed `lastTime` initialization from 0 to `performance.now()` 
+- Fixed parameter passing to scene render methods:
+  - MenuScene now correctly receives particles parameter for ambient effects
+  - Other scenes receive appropriate parameters (game instance when needed)
+- Improved game loop initialization with proper context binding in requestAnimationFrame calls
+
+**Files Modified**:
+- `main.js` - Fixed canvas initialization timing and game loop setup
+- `input.js` - Delayed event listener attachment to ensure canvas is in DOM
+- `core/game.js` - Fixed initial timestamp and scene rendering parameter passing
+
+**Impact**: Game now starts properly and displays the menu correctly. Players can select builds and difficulties, then start the game with SPACE key.
+
 ## 2026-04-16 - Codebase Consistency Update
 
 ### Configuration Centralization
