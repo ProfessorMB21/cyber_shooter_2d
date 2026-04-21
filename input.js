@@ -10,7 +10,10 @@ class InputHandler {
     this.mouseClicked = false;
     this.canvas = canvas;
 
-    this.setupEventListeners();
+    // Setup event listeners after a small delay to ensure canvas is in DOM
+    setTimeout(() => {
+      this.setupEventListeners();
+    }, 0);
   }
 
   setupEventListeners() {

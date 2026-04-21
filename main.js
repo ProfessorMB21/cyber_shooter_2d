@@ -11,42 +11,39 @@ function init() {
   canvas.style.border = 'none';
   canvas.style.display = 'block';
 
-  // Clear body and add canvas
+  // Replace body content with canvas
   document.body.innerHTML = '';
   document.body.style.margin = '0';
   document.body.style.padding = '0';
   document.body.style.overflow = 'hidden';
   document.body.appendChild(canvas);
 
-  // Create game
-  const game = new Game(canvas);
+  // Small delay to ensure canvas is in DOM before initializing game
+  setTimeout(() => {
+    // Create game
+    const game = new Game(canvas);
 
-  // Hide loading div
-  const loadingDiv = document.getElementById('loading');
-  if (loadingDiv) {
-    loadingDiv.style.display = 'none';
-  }
+    // Handle window resize - Keep internal width/height in sync with canvas
+    window.addEventListener('resize', () => {
+      const newWidth = window.innerWidth;
+      const newHeight = window.innerHeight;
 
-  // Handle window resize - Keep internal width/height in sync with canvas
-  window.addEventListener('resize', () => {
-    const newWidth = window.innerWidth;
-    const newHeight = window.innerHeight;
+      canvas.width = newWidth;
+      canvas.height = newHeight;
 
-    canvas.width = newWidth;
-    canvas.height = newHeight;
+      // Update game dimensions
+      game.width = newWidth;
+      game.height = newHeight;
 
-    // Update game dimensions
-    game.width = newWidth;
-    game.height = newHeight;
+      // Update particle system bounds
+      if (game.particles && game.particles.resize) {
+        game.particles.resize(newWidth, newHeight);
+      }
+    });
 
-    // Update particle system bounds
-    if (game.particles && game.particles.resize) {
-      game.particles.resize(newWidth, newHeight);
-    }
-  });
-
-  // Start menu loop
-  requestAnimationFrame(game.loop);
+    // Start menu loop - ensure proper context binding
+    requestAnimationFrame((timestamp) => game.loop(timestamp));
+  }, 0);
 }
 
 // Start

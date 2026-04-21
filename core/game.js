@@ -50,7 +50,7 @@ class Game {
     this.pickups = [];
 
     // Timing
-    this.lastTime = 0;
+    this.lastTime = performance.now();
     this.gameTime = 0;
     this.wave = 1;
 
@@ -162,13 +162,14 @@ class Game {
         }
       }
 
-      if (this.state === 'menu' || this.state === 'gameover') {
+      if (this.state === 'menu') {
         this.drawBackground(this.ctx);
         this.particles.update(1/60);
         this.particles.draw(this.ctx);
+        this.sceneManager.render(this.ctx, this.width, this.height, this.particles);
+      } else {
+        this.sceneManager.render(this.ctx, this.width, this.height, this);
       }
-
-      this.sceneManager.render(this.ctx, this.width, this.height);
       requestAnimationFrame(this.loop);
       return;
     }
