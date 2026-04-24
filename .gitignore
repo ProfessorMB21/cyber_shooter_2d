@@ -1,4 +1,14 @@
 ```
+# Git ignore file
+
+# CLAUDE.md should not be committed
+CLAUDE.md
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# IDE
 # Logs and temp files
 *.log
 *.tmp
