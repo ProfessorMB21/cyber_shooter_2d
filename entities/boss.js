@@ -354,37 +354,51 @@ class Boss extends Enemy {
 
     ctx.restore();
 
-    // Health bar
-    const barWidth = 80;
-    const barHeight = 8;
+    // Enhanced health bar - larger and more visible
+    const barWidth = 200;
+    const barHeight = 12;
     const barX = center.x - barWidth / 2;
-    const barY = this.y - 20;
+    const barY = this.y - 30;
 
+    // Background with border
+    ctx.fillStyle = '#222';
+    ctx.fillRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
+    
     // Background
     ctx.fillStyle = '#333';
     ctx.fillRect(barX, barY, barWidth, barHeight);
 
-    // Health
+    // Health with gradient effect
     const hpPercent = this.hp / this.maxHp;
-    ctx.fillStyle = hpPercent > 0.5 ? '#44ff44' : hpPercent > 0.25 ? '#ffff44' : '#ff4444';
+    const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+    gradient.addColorStop(0, hpPercent > 0.5 ? '#44ff44' : hpPercent > 0.25 ? '#ffff44' : '#ff4444');
+    gradient.addColorStop(1, hpPercent > 0.5 ? '#22cc22' : hpPercent > 0.25 ? '#cccc44' : '#cc2222');
+    ctx.fillStyle = gradient;
     ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+    
+    // Health text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${Math.floor(this.hp)}/${Math.floor(this.maxHp)}`, center.x, barY + 9);
 
     // Shield bar
     if (this.shield > 0) {
       ctx.fillStyle = '#4444ff';
-      ctx.fillRect(barX, barY - 5, barWidth * (this.shield / (this.maxHp * 0.1)), 3);
+      ctx.fillRect(barX, barY - 6, barWidth * Math.min(1, this.shield / (this.maxHp * 0.1)), 4);
     }
 
-    // Name
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px monospace';
+    // Name with boss level
+    ctx.fillStyle = '#ff8800';
+    ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(this.name, center.x, barY - 10);
+    ctx.fillText(`⚠ ${this.name} (Lv.${this.levelIndex})`, center.x, barY - 12);
 
     // Phase indicator
     if (this.phase === 2) {
       ctx.fillStyle = '#ff0000';
-      ctx.fillText('PHASE 2', center.x, barY - 22);
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('🔥 ENRAGED - PHASE 2 🔥', center.x, barY - 26);
     }
   }
 }
