@@ -224,6 +224,9 @@ class Game {
     // Update visual effects
     this.updateShake(deltaTime);
     this.updateStars(deltaTime);
+    
+    // Update damage numbers
+    this.updateDamageNumbers(deltaTime);
 
     const mult = config.difficulties[this.difficulty];
 
@@ -255,7 +258,14 @@ class Game {
               const dx = p.x - e.getCenter().x;
               const dy = p.y - e.getCenter().y;
               if (dx * dx + dy * dy < (p.size + e.width / 2) ** 2) {
-                e.takeDamage(p.damage);
+                const isCrit = Math.random() < 0.15; // 15% crit chance
+                const finalDamage = isCrit ? p.damage * 2 : p.damage;
+                e.takeDamage(finalDamage);
+                
+                // Show damage number
+                const center = e.getCenter();
+                this.addDamageNumber(center.x, center.y - 10, finalDamage, isCrit, '#ffff00');
+                
                 if (!p.piercing) {
                   p.dead = true;
                 } else {
@@ -275,7 +285,14 @@ class Game {
               const dx = p.x - b.getCenter().x;
               const dy = p.y - b.getCenter().y;
               if (dx * dx + dy * dy < (p.size + 25) ** 2) {
-                b.takeDamage(p.damage);
+                const isCrit = Math.random() < 0.15; // 15% crit chance
+                const finalDamage = isCrit ? p.damage * 2 : p.damage;
+                b.takeDamage(finalDamage);
+                
+                // Show damage number for boss
+                const center = b.getCenter();
+                this.addDamageNumber(center.x, center.y - 10, finalDamage, isCrit, '#ff88ff');
+                
                 if (!p.piercing) {
                   p.dead = true;
                 } else {
@@ -466,7 +483,11 @@ class Game {
           this.enemies.forEach(e => {
             const dist = this.player.distanceTo(e);
             if (dist < aoeRadius) {
-              e.takeDamage(result.damage * (1 - dist / aoeRadius));
+              const dmg = result.damage * (1 - dist / aoeRadius);
+              e.takeDamage(dmg);
+              // Show damage number for AOE
+              const ec = e.getCenter();
+              this.addDamageNumber(ec.x, ec.y - 10, Math.floor(dmg), false, '#ff8800');
               if (e.dead) this.onKill(e);
             }
           });
@@ -625,6 +646,9 @@ class Game {
 
     // Draw projectiles
     this.projectiles.forEach(p => p.draw(ctx));
+
+    // Draw damage numbers (on top of game entities but under UI)
+    this.drawDamageNumbers(ctx);
 
     // Draw particles (foreground)
 
