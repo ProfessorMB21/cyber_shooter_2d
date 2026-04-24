@@ -542,6 +542,12 @@ class Game {
       if (this.gameTime > 60 && rand < 0.35) typeIndex = 2; // Tank (was 120s, now 60s)
       if (this.gameTime > 90 && rand < 0.3) typeIndex = 3; // Shooter (was 180s, now 90s)
       if (this.gameTime > 120 && rand < 0.25) typeIndex = 4; // Elite (was 240s, now 120s)
+      
+      // NEW: Add special enemy types at later game times
+      if (this.gameTime > 150 && rand < 0.15) typeIndex = 5; // Summoner
+      if (this.gameTime > 180 && rand < 0.12) typeIndex = 6; // Healer
+      if (this.gameTime > 200 && rand < 0.1) typeIndex = 7; // Kamikaze
+      if (this.gameTime > 220 && rand < 0.08) typeIndex = 8; // Teleporter
 
       // Limit total enemies to prevent screen filling (max 40 enemies)
       if (this.enemies.length >= 30) break;

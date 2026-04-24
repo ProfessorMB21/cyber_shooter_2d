@@ -138,23 +138,38 @@ class Boss extends Enemy {
   update(deltaTime, player, canvasWidth, canvasHeight) {
     if (this.dead) return false;
 
-    // Phase transition
+    // Phase transitions - now with 3 phases
     if (this.phase === 1 && this.hp <= this.maxHp * this.phaseThreshold) {
       this.phase = 2;
       this.damage *= 1.3;
       this.speed *= 1.2;
       this.shield = this.maxHp * 0.1;
+      this.attackInterval *= 0.8; // Attack 20% faster in phase 2
+    }
+    
+    // Phase 3 transition at 20% HP
+    if (this.phase === 2 && this.hp <= this.maxHp * 0.2) {
+      this.phase = 3;
+      this.damage *= 1.5; // Massive damage boost
+      this.speed *= 1.3; // Much faster movement
+      this.spinSpeed *= 2; // Faster projectile rotation
+      this.attackInterval *= 0.6; // Attack 40% faster than base
+      // Desperation mode - visual indicator
+      this.color = '#ff0000';
     }
 
     // Update angle for spiral patterns
-    this.angle += deltaTime * this.spinSpeed * (this.phase === 2 ? 2 : 1);
+    this.angle += deltaTime * this.spinSpeed * (this.phase >= 2 ? 2 : 1);
+    if (this.phase === 3) {
+      this.angle += deltaTime * this.spinSpeed * 2; // Extra fast in phase 3
+    }
 
     // Movement - hover around center or follow player
     this.moveTimer -= deltaTime;
     if (this.moveTimer <= 0) {
-      this.moveTimer = 3;
-      if (this.pattern === 'crush') {
-        // Crush boss follows player
+      this.moveTimer = 3 / (this.phase); // Move more frequently in higher phases
+      if (this.pattern === 'crush' || this.phase === 3) {
+        // Crush boss follows player, all bosses chase in phase 3
         this.targetX = player.x;
         this.targetY = player.y;
       } else {
@@ -394,11 +409,27 @@ class Boss extends Enemy {
     ctx.textAlign = 'center';
     ctx.fillText(`⚠ ${this.name} (Lv.${this.levelIndex})`, center.x, barY - 12);
 
-    // Phase indicator
+    // Phase indicators
     if (this.phase === 2) {
-      ctx.fillStyle = '#ff0000';
+      ctx.fillStyle = '#ffaa00';
       ctx.font = 'bold 12px monospace';
       ctx.fillText('🔥 ENRAGED - PHASE 2 🔥', center.x, barY - 26);
+    }
+    
+    if (this.phase === 3) {
+      ctx.fillStyle = '#ff0000';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText('💀 DESPERATION - PHASE 3 💀', center.x, barY - 26);
+      
+      // Pulsing warning effect for phase 3
+      const pulse = Math.sin(Date.now() / 100) * 0.5 + 0.5;
+      ctx.globalAlpha = pulse;
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 45, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
 }
