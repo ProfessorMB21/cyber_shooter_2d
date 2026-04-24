@@ -7,8 +7,8 @@ import { PlayerAbilities } from './abilities.js';
 class Player extends Entity {
   constructor(buildName, x, y) {
     const build = BUILDS[buildName];
-    if (!build) throw new Error(`Unknown build: ${buildName}`);
-    super({ x, y, width: 30, height: 30, color: build.color, name: build.name, hp: build.stats.hp, maxHp: build.stats.maxHp, damage: build.stats.damage, speed: build.stats.speed * SPEED_SCALE_FACTOR, armor: build.stats.armor });
+    if (!build) throw new Error(`Unknown build: ${this.sanitizeInput(buildName)}`);
+    super({ x, y, width: 30, height: 30, color: build.color, name: this.sanitizeInput(build.name), hp: build.stats.hp, maxHp: build.stats.maxHp, damage: build.stats.damage, speed: build.stats.speed * SPEED_SCALE_FACTOR, armor: build.stats.armor });
     this.buildName = buildName;
     this.build = build;
     this.level = 1;
@@ -30,6 +30,12 @@ class Player extends Entity {
     this.passiveEffects = [];
     this.abilities = new PlayerAbilities(this);
     this.calculateDerivedStats();
+  }
+
+  // Sanitize input to prevent log injection
+  sanitizeInput(str) {
+    if (typeof str !== 'string') return String(str);
+    return str.replace(/[<>]/g, '');
   }
 
   // Calculate derived stats from base stats

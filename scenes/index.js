@@ -11,13 +11,25 @@ class SceneManager {
     this.game = game;
     this.scenes = {};
     this.currentScene = null;
+    // Whitelist of valid scene names
+    this.validScenes = new Set(['menu', 'gameover', 'levelup', 'pause']);
   }
 
   register(name, scene) {
+    // Validate scene name against whitelist
+    if (!this.validScenes.has(name)) {
+      console.warn(`Attempted to register invalid scene: ${name}`);
+      return;
+    }
     this.scenes[name] = scene;
   }
 
   switchTo(name) {
+    // Validate scene name before switching
+    if (!this.validScenes.has(name)) {
+      console.warn(`Attempted to switch to invalid scene: ${name}`);
+      name = 'menu'; // Default to menu for invalid scenes
+    }
     this.currentScene = this.scenes[name] || null;
   }
 

@@ -1,74 +1,162 @@
-// Collision System
-
-import { Projectile } from '../entities/projectile.js';
+// Collision System - Enhanced with visual effects
 
 class CollisionSystem {
   constructor(game) {
     this.game = game;
   }
 
-  checkProjectileCollisions(p, deltaTime) {
-    if (p.isPlayer) {
-      this.checkPlayerProjectileCollisions(p);
+  // Check projectile collisions
+  checkProjectileCollisions(projectile, deltaTime) {
+    if (projectile.isPlayer) {
+      // Player projectile hitting enemies
+      for (const enemy of this.game.enemies) {
+        if (this.checkCircleRectCollision(
+          projectile.x, projectile.y, projectile.size,
+          enemy.x, enemy.y, enemy.width, enemy.height
+        )) {
+          const damage = projectile.damage;
+          const isCrit = projectile.isCrit;
+          enemy.takeDamage(damage);
+          
+          // Visual feedback
+          this.game.visuals.addDamageNumber(
+            enemy.getCenter().x, 
+            enemy.getCenter().y, 
+            damage, 
+            isCrit
+          );
+          this.game.visuals.addHitMarker(
+            projectile.x, 
+            projectile.y, 
+            enemy.hp <= 0
+          );
+          
+          if (!projectile.piercing) {
+            projectile.life = 0;
+          }
+          
+          if (enemy.hp <= 0 && !enemy.dead) {
+            enemy.dead = true;
+            this.game.onKill(enemy);
+            this.game.particles.spawnExplosion(
+              enemy.getCenter().x,
+              enemy.getCenter().y,
+              20,
+              enemy.color
+            );
+            this.game.addShake(2);
+          }
+          break;
+        }
+      }
+
+      // Check bosses
+      for (const boss of this.game.bosses) {
+        if (this.checkCircleRectCollision(
+          projectile.x, projectile.y, projectile.size,
+          boss.x, boss.y, boss.width, boss.height
+        )) {
+          const damage = projectile.damage;
+          const isCrit = projectile.isCrit;
+          boss.takeDamage(damage);
+          
+          this.game.visuals.addDamageNumber(
+            boss.getCenter().x,
+            boss.getCenter().y,
+            damage,
+            isCrit
+          );
+          
+          if (!projectile.piercing) {
+            projectile.life = 0;
+          }
+          
+          if (boss.hp <= 0 && !boss.dead) {
+            boss.dead = true;
+            this.game.onBossKill(boss);
+            this.game.particles.spawnExplosion(
+              boss.getCenter().x,
+              boss.getCenter().y,
+              50,
+              boss.color
+            );
+            this.game.addShake(10);
+          }
+          break;
+        }
+      }
     } else {
-      this.checkEnemyProjectileCollisions(p, deltaTime);
-    }
-  }
-
-  checkPlayerProjectileCollisions(p) {
-    // Player projectile hits enemies
-    this.game.enemies.forEach(e => {
-      if (!p.hits.includes(e) && !e.dead) {
-        const dx = p.x - e.getCenter().x;
-        const dy = p.y - e.getCenter().y;
-        if (dx * dx + dy * dy < (p.size + e.width / 2) ** 2) {
-          e.takeDamage(p.damage);
-          if (!p.piercing) p.dead = true;
-          else p.hits.push(e);
-          if (e.dead) this.game.onKill(e);
-        }
-      }
-    });
-
-    // Player projectile hits bosses
-    this.game.bosses.forEach(b => {
-      if (!p.hits.includes(b) && !b.dead) {
-        const dx = p.x - b.getCenter().x;
-        const dy = p.y - b.getCenter().y;
-        if (dx * dx + dy * dy < (p.size + 25) ** 2) {
-          b.takeDamage(p.damage);
-          if (!p.piercing) p.dead = true;
-          else p.hits.push(b);
-          if (b.dead) this.game.onBossKill(b);
-        }
-      }
-    });
-  }
-
-  checkEnemyProjectileCollisions(p, deltaTime) {
-    const pc = this.game.player.getCenter();
-    const dx = p.x - pc.x;
-    const dy = p.y - pc.y;
-    if (dx * dx + dy * dy < (p.size + 15) ** 2) {
-      if (p.aoe) {
-        this.game.player.takeDamage(p.damage * deltaTime * 5);
-        this.game.addShake(1.5);
-      } else {
-        this.game.player.takeDamage(p.damage);
-        this.game.addShake(1);
-        p.dead = true;
+      // Enemy projectile hitting player
+      const player = this.game.player;
+      if (player && this.checkCircleRectCollision(
+        projectile.x, projectile.y, projectile.size,
+        player.x, player.y, player.width, player.height
+      )) {
+        player.takeDamage(projectile.damage);
+        this.game.addShake(3);
+        this.game.visuals.addHitMarker(player.getCenter().x, player.getCenter().y, false);
+        projectile.life = 0;
       }
     }
   }
 
-  handleBossAttack(b) {
-    const projectiles = b.getProjectiles(this.game.player);
-    projectiles.forEach(p => {
-      this.game.projectiles.push(new Projectile(
-        p.x, p.y, p.vx, p.vy, p.damage, p.color, false,
-        { size: p.size, piercing: p.piercing, aoe: p.aoe, expand: p.expand, maxSize: p.maxSize, duration: p.duration }
-      ));
+  // Check circle-rectangle collision
+  checkCircleRectCollision(cx, cy, cr, rx, ry, rw, rh) {
+    const closestX = Math.max(rx, Math.min(cx, rx + rw));
+    const closestY = Math.max(ry, Math.min(cy, ry + rh));
+    const dx = cx - closestX;
+    const dy = cy - closestY;
+    return (dx * dx + dy * dy) < (cr * cr);
+  }
+
+  // Handle boss attacks
+  handleBossAttack(boss) {
+    // Boss melee/contact damage handled separately
+    // This is for special boss abilities
+    if (boss.pattern === 'nova') {
+      this.game.addShake(5);
+    }
+  }
+
+  // Check entity collisions (player vs enemies)
+  checkEntityCollisions() {
+    const player = this.game.player;
+    if (!player) return;
+
+    // Player vs enemies contact damage
+    for (const enemy of this.game.enemies) {
+      if (this.checkRectCollision(
+        player.x, player.y, player.width, player.height,
+        enemy.x, enemy.y, enemy.width, enemy.height
+      )) {
+        // Contact damage already handled in enemy.update()
+      }
+    }
+
+    // Player vs pickups
+    this.game.pickups = this.game.pickups.filter(pickup => {
+      if (this.checkRectCollision(
+        player.x, player.y, player.width, player.height,
+        pickup.x, pickup.y, pickup.width, pickup.height
+      )) {
+        pickup.collect(player);
+        this.game.visuals.addDamageNumber(
+          player.getCenter().x,
+          player.getCenter().y - 20,
+          pickup.type === 'health' ? '+HP' : 
+          pickup.type === 'shield' ? '+SHIELD' :
+          pickup.type === 'damage' ? '+DMG' : '+SPD',
+          false
+        );
+        return false;
+      }
+      return true;
     });
+  }
+
+  // Check rectangle-rectangle collision
+  checkRectCollision(x1, y1, w1, h1, x2, y2, w2, h2) {
+    return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
   }
 }
 

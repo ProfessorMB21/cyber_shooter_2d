@@ -9,6 +9,13 @@ class InputHandler {
     this.mouseDown = false;
     this.mouseClicked = false;
     this.canvas = canvas;
+    
+    // Store event listener references for cleanup
+    this._boundKeydown = null;
+    this._boundKeyup = null;
+    this._boundMousemove = null;
+    this._boundMousedown = null;
+    this._boundMouseup = null;
 
     // Setup event listeners after a small delay to ensure canvas is in DOM
     setTimeout(() => {
@@ -18,7 +25,7 @@ class InputHandler {
 
   setupEventListeners() {
     // Keyboard events
-    window.addEventListener('keydown', (e) => {
+    this._boundKeydown = (e) => {
       this.keys[e.key.toLowerCase()] = true;
       this.keys[e.code] = true;
 
@@ -31,30 +38,58 @@ class InputHandler {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
       }
-    });
+    };
 
-    window.addEventListener('keyup', (e) => {
+    this._boundKeyup = (e) => {
       this.keys[e.key.toLowerCase()] = false;
       this.keys[e.code] = false;
       this.keysPressed[e.key.toLowerCase()] = false;
-    });
+    };
+
+    window.addEventListener('keydown', this._boundKeydown);
+    window.addEventListener('keyup', this._boundKeyup);
 
     // Mouse events relative to canvas
     if (this.canvas) {
-      this.canvas.addEventListener('mousemove', (e) => {
+      this._boundMousemove = (e) => {
         const rect = this.canvas.getBoundingClientRect();
         this.mouseX = e.clientX - rect.left;
         this.mouseY = e.clientY - rect.top;
-      });
+      };
 
-      this.canvas.addEventListener('mousedown', (e) => {
+      this._boundMousedown = (e) => {
         this.mouseDown = true;
         this.mouseClicked = true;
-      });
+      };
 
-      this.canvas.addEventListener('mouseup', (e) => {
+      this._boundMouseup = (e) => {
         this.mouseDown = false;
-      });
+      };
+
+      this.canvas.addEventListener('mousemove', this._boundMousemove);
+      this.canvas.addEventListener('mousedown', this._boundMousedown);
+      this.canvas.addEventListener('mouseup', this._boundMouseup);
+    }
+  }
+
+  // Cleanup event listeners to prevent memory leaks
+  destroy() {
+    if (this._boundKeydown) {
+      window.removeEventListener('keydown', this._boundKeydown);
+    }
+    if (this._boundKeyup) {
+      window.removeEventListener('keyup', this._boundKeyup);
+    }
+    if (this.canvas) {
+      if (this._boundMousemove) {
+        this.canvas.removeEventListener('mousemove', this._boundMousemove);
+      }
+      if (this._boundMousedown) {
+        this.canvas.removeEventListener('mousedown', this._boundMousedown);
+      }
+      if (this._boundMouseup) {
+        this.canvas.removeEventListener('mouseup', this._boundMouseup);
+      }
     }
   }
 

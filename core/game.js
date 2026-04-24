@@ -1,4 +1,4 @@
-// Main Game Engine - Core Game Class
+// Main Game Engine - Core Game Class (Enhanced)
 
 import { InputHandler } from '../input.js';
 import { ParticleSystem } from '../systems/particles.js';
@@ -101,6 +101,7 @@ class Game {
     this.projectiles = [];
     this.pickups = [];
     this.particles.clear();
+    this.visuals.clearAll();
 
     this.gameTime = 0;
     this.wave = 1;
@@ -196,6 +197,12 @@ class Game {
 
     this.updateShake(deltaTime);
     this.updateStars(deltaTime);
+
+    // Update visual effects
+    this.visuals.updateDamageNumbers(deltaTime);
+    this.visuals.updateHitMarkers(deltaTime);
+    this.visuals.updateMuzzleFlashes(deltaTime);
+    this.visuals.updateShellCasings(deltaTime);
 
     this.player.update(deltaTime, this.input, this.width, this.height);
 
