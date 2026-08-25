@@ -10,10 +10,22 @@ class MenuScene {
     this.difficultySelection = 1;
     this.buildNames = Object.keys(BUILDS);
     this.difficulties = Object.keys(DIFFICULTIES);
+    this.menuState = 'main'; // 'main' or 'build_select'
   }
 
   update(input) {
-    // Handle input
+    if (this.menuState === 'main') {
+      // Main menu - Settings/Play options
+      if (input.isKeyPressed(' ')) {
+        return { action: 'show_builds' };
+      }
+      if (input.isKeyPressed('s')) {
+        return { action: 'show_settings' };
+      }
+      return null;
+    }
+
+    // Build/difficulty selection state
     if (input.isKeyPressed('ArrowUp')) {
       this.buildSelection = (this.buildSelection - 1 + this.buildNames.length) % this.buildNames.length;
     }
@@ -32,6 +44,9 @@ class MenuScene {
         build: this.buildNames[this.buildSelection],
         difficulty: this.difficulties[this.difficultySelection]
       };
+    }
+    if (input.isKeyPressed('escape')) {
+      this.menuState = 'main';
     }
     return null;
   }
@@ -57,7 +72,41 @@ class MenuScene {
     ctx.font = '20px monospace';
     ctx.fillText('A Retro Space Shooter', width / 2, 130);
 
-    // Difficulty selection with color coding
+    if (this.menuState === 'main') {
+      this.renderMainMenu(ctx, width, height);
+    } else {
+      this.renderBuildSelect(ctx, width, height);
+    }
+  }
+
+  renderMainMenu(ctx, width, height) {
+    const centerY = height / 2;
+
+    // Play button
+    let playY = centerY - 60;
+    ctx.fillStyle = '#0f0';
+    ctx.fillRect(width / 2 - 120, playY - 30, 240, 50);
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 24px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('PLAY', width / 2, playY + 8);
+
+    // Settings button
+    let settingsY = centerY + 40;
+    ctx.fillStyle = '#0f0';
+    ctx.fillRect(width / 2 - 120, settingsY - 30, 240, 50);
+    ctx.fillStyle = '#000';
+    ctx.fillText('SETTINGS', width / 2, settingsY + 8);
+
+    // Instructions
+    ctx.fillStyle = '#888';
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('[SPACE] Play  [S] Settings', width / 2, height - 40);
+  }
+
+  renderBuildSelect(ctx, width, height) {
+    // Difficulty selection
     ctx.fillStyle = '#fff';
     ctx.font = '18px monospace';
     ctx.fillText('Select Difficulty:', width / 2, 180);
@@ -132,7 +181,7 @@ class MenuScene {
     ctx.fillText('▲ UP/DOWN ▼    Select Build', width / 2, instructionY + 15);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 18px monospace';
-    ctx.fillText('Press [SPACE] to Start!', width / 2, instructionY + 65);
+    ctx.fillText('Press [SPACE] to Start! [ESC] Back', width / 2, instructionY + 65);
   }
 }
 

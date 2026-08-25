@@ -7,7 +7,7 @@ import { Enemy } from '../entities/enemy.js';
 import { Boss } from '../entities/boss.js';
 import { Pickup } from '../entities/pickup.js';
 import { DIFFICULTIES } from '../config/index.js';
-import { MenuScene, GameOverScene, LevelUpScene, PauseScene, SceneManager } from '../scenes/index.js';
+import { MenuScene, GameOverScene, LevelUpScene, PauseScene, SettingsScene, SceneManager } from '../scenes/index.js';
 import { CombatSystem } from './combat.js';
 import { SpawningSystem } from './spawning.js';
 import { EventSystem } from './events.js';
@@ -15,6 +15,7 @@ import { RenderingSystem } from './renderer.js';
 import { VisualEffectsSystem } from './visual-effects.js';
 import { CollisionSystem } from './collision.js';
 import { PerformanceMonitor } from './performance.js';
+import { GameSettings } from './settings.js';
 
 class Game {
   constructor(canvas) {
@@ -22,6 +23,9 @@ class Game {
     this.ctx = canvas.getContext('2d');
     this.width = canvas.width;
     this.height = canvas.height;
+
+    // Game settings
+    this.settings = new GameSettings();
 
     // Performance monitoring
     this.perf = new PerformanceMonitor();
@@ -78,6 +82,7 @@ class Game {
     // Scene manager
     this.sceneManager = new SceneManager(this);
     this.sceneManager.register('menu', new MenuScene(this));
+    this.sceneManager.register('settings', new SettingsScene(this));
     this.sceneManager.register('gameover', new GameOverScene(this));
     this.sceneManager.register('levelup', new LevelUpScene(this));
     this.sceneManager.register('pause', new PauseScene(this));
@@ -126,6 +131,16 @@ class Game {
     }
   }
 
+  applyQualitySettings() {
+    // Apply quality settings to particle system and rendering
+    const maxParticles = this.settings.getSetting('particleCount');
+    if (this.particles.poolSize !== maxParticles) {
+      this.particles.poolSize = maxParticles;
+      this.particles.pool = [];
+      this.particles.preAllocatePool();
+    }
+  }
+
   // Delegate methods to core systems
   playerShoot() { return this.combat.playerShoot(); }
   activateSkill(slot) { return this.combat.activateSkill(slot); }
@@ -169,13 +184,30 @@ class Game {
         if (result.action === 'start') {
           this.start(result.build, result.difficulty);
           return;
+        } else if (result.action === 'show_builds') {
+          this.state = 'menu';
+          this.sceneManager.switchTo('menu');
+          if (this.sceneManager.currentScene) {
+            this.sceneManager.currentScene.menuState = 'build_select';
+          }
+        } else if (result.action === 'show_settings') {
+          this.state = 'settings';
+          this.sceneManager.switchTo('settings');
+        } else if (result.action === 'apply_quality') {
+          this.settings.setQuality(result.quality);
+          this.applyQualitySettings();
+          this.state = 'menu';
+          this.sceneManager.switchTo('menu');
+        } else if (result.action === 'back_to_menu') {
+          this.state = 'menu';
+          this.sceneManager.switchTo('menu');
         } else if (result.action === 'menu') {
           this.state = 'menu';
           this.sceneManager.switchTo('menu');
         }
       }
 
-      if (this.state === 'menu') {
+      if (this.state === 'menu' || this.state === 'settings') {
         this.drawBackground(this.ctx);
         this.particles.update(1/60);
         this.particles.draw(this.ctx);
