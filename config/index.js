@@ -11,7 +11,7 @@ export {
 export { PLAYER_BUILDS, BUILDS } from './player-builds.js';
 export { ENEMY_TYPES } from './enemy-types.js';
 export { DIFFICULTIES } from './difficulties.js';
-export { BOSS_PATTERNS, BOSS_CONFIG as bosses } from './bosses.js';
+export { BOSS_PATTERNS, BOSS_CONFIG } from './bosses.js';
 export { PICKUPS, ITEMS } from './pickups.js';
 export { GAME_SETTINGS } from './game.js';
 
