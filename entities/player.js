@@ -186,7 +186,7 @@ class Player extends Entity {
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(`Lv${this.level}`, center.x, this.y + this.height + 12);
-    this.drawBuildSpecific(ctx, center);
+    // Build-specific visuals disabled for 120fps target
   }
 
   // Draw build-specific visual designs (optimized, skip on low FPS)

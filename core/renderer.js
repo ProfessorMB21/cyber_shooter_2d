@@ -18,24 +18,36 @@ class RenderingSystem {
     // Draw particles (background)
     this.game.particles.draw(ctx);
 
-    // Draw pickups
-    this.game.pickups.forEach(p => p.draw(ctx));
+    // Draw pickups (with culling)
+    this.game.pickups.forEach(p => {
+      if (p.x > -50 && p.x < this.game.width + 50 && p.y > -50 && p.y < this.game.height + 50) {
+        p.draw(ctx);
+      }
+    });
 
     // Draw player
     if (this.game.player) {
       this.game.player.draw(ctx);
     }
 
-    // Draw enemies
-    this.game.enemies.forEach(e => e.draw(ctx));
+    // Draw enemies (with culling)
+    this.game.enemies.forEach(e => {
+      if (e.x > -100 && e.x < this.game.width + 100 && e.y > -100 && e.y < this.game.height + 100) {
+        e.draw(ctx);
+      }
+    });
 
-    // Draw bosses
-    this.game.bosses.forEach(b => b.draw(ctx));
+    // Draw bosses (usually visible)
+    this.game.bosses.forEach(b => {
+      b.draw(ctx);
+    });
 
-    // Draw projectiles
-    this.game.projectiles.forEach(p => p.draw(ctx));
-
-    // Draw particles (foreground)
+    // Draw projectiles (with culling)
+    this.game.projectiles.forEach(p => {
+      if (p.x > -50 && p.x < this.game.width + 50 && p.y > -50 && p.y < this.game.height + 50) {
+        p.draw(ctx);
+      }
+    });
 
     ctx.restore();
 
@@ -45,146 +57,52 @@ class RenderingSystem {
 
   renderUI(ctx) {
     ctx.save();
+    ctx.font = '14px monospace';
 
-    // Top-left info panel (minimal redraws)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fillRect(5, 5, 240, 100);
-    ctx.strokeStyle = '#0f0';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(5, 5, 240, 100);
-
+    // Top-left panel - only update score/wave/time (cheap text)
     ctx.fillStyle = '#0f0';
-    ctx.font = '16px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`Score: ${Math.floor(this.game.score)}`, 15, 25);
-    ctx.fillText(`Time: ${Math.floor(this.game.gameTime)}s`, 15, 45);
-    ctx.fillText(`Wave: ${this.game.wave}`, 15, 65);
-    ctx.fillText(`Kills: ${this.game.kills}`, 15, 85);
+    ctx.fillText(`${this.game.score} | ${Math.floor(this.game.gameTime)}s | W${this.game.wave}`, 10, 20);
 
-    // Combo (only draw if active)
+    // Combo - only if active
     if (this.game.combo > 1) {
       ctx.fillStyle = '#ff0';
-      ctx.font = 'bold 20px monospace';
-      ctx.fillText(`COMBO x${this.game.combo}`, 10, 115);
+      ctx.font = 'bold 18px monospace';
+      ctx.fillText(`x${this.game.combo}`, 10, 40);
     }
 
-    // Player stats panel (bottom-left)
+    // Player stats (minimal, no frames)
     if (this.game.player) {
       const p = this.game.player;
       const now = Date.now();
+      const y = this.game.height - 20;
 
-      let displayDamage = p.currentStats.damage;
-      let displaySpeed = p.currentStats.speed;
+      let dmg = p.currentStats.damage;
+      if (p.overloadActive && now < p.overloadEndTime) dmg *= 2;
 
-      const overloadActive = p.overloadActive && now < p.overloadEndTime;
-      const speedBoostActive = p.speedBoostActive && now < p.speedBoostEndTime;
-
-      if (overloadActive) displayDamage *= 2;
-      if (speedBoostActive) displaySpeed *= 1.5;
-
-      // Stats frame
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      ctx.fillRect(5, this.game.height - 105, 200, 100);
-      ctx.strokeStyle = '#0f0';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(5, this.game.height - 105, 200, 100);
-
-      // Stats with emoji
-      ctx.fillStyle = '#0f0';
-      ctx.font = '14px monospace';
-      ctx.textAlign = 'left';
-      ctx.fillText(`❤️  ${Math.floor(p.hp)}/${p.currentStats.maxHp}`, 15, this.game.height - 85);
-
-      ctx.fillStyle = overloadActive ? '#ff8800' : '#fff';
-      ctx.fillText(`⚔️  ${Math.floor(displayDamage)}`, 15, this.game.height - 70);
-
-      ctx.fillStyle = speedBoostActive ? '#00ffff' : '#fff';
-      ctx.fillText(`💨 ${Math.floor(displaySpeed)}`, 15, this.game.height - 55);
-
-      ctx.fillStyle = '#fff';
-      ctx.fillText(`⭐ Lv${p.level}`, 15, this.game.height - 40);
-
-      // Build name
-      ctx.fillStyle = p.color;
-      ctx.font = 'bold 12px monospace';
-      ctx.fillText(p.build.name.toUpperCase(), 15, this.game.height - 22);
-
-      // Shield (only if active)
-      if (p.shield > 0) {
-        ctx.fillStyle = '#4444ff';
-        ctx.font = '12px monospace';
-        ctx.fillText(`🛡️ ${Math.floor(p.shield)}`, 120, this.game.height - 85);
-      }
-
-      // XP bar
-      const xpPercent = p.xp / p.xpToNextLevel;
-      ctx.fillStyle = '#000';
-      ctx.fillRect(10, this.game.height - 12, 190, 8);
-      ctx.strokeStyle = '#0f0';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(10, this.game.height - 12, 190, 8);
-      ctx.fillStyle = '#0f0';
-      ctx.fillRect(10, this.game.height - 12, 190 * xpPercent, 8);
-    }
-
-    // Active buffs (only draw active ones)
-    if (this.game.player) {
-      const p = this.game.player;
-      const now = Date.now();
-      let buffY = this.game.height - 125;
       ctx.font = '12px monospace';
+      ctx.fillStyle = '#0f0';
+      ctx.fillText(`❤ ${Math.floor(p.hp)} ⚔ ${Math.floor(dmg)} Lv${p.level}`, 10, y);
 
-      if (p.overloadActive && now < p.overloadEndTime) {
-        const remaining = Math.ceil((p.overloadEndTime - now) / 1000);
-        ctx.fillStyle = '#ff8800';
-        ctx.fillText(`⚡ OVERLOAD (${remaining}s)`, 10, buffY);
-        buffY -= 15;
-      }
-
-      if (p.speedBoostActive && now < p.speedBoostEndTime) {
-        const remaining = Math.ceil((p.speedBoostEndTime - now) / 1000);
-        ctx.fillStyle = '#00ffff';
-        ctx.fillText(`⚡ SPEED BOOST (${remaining}s)`, 10, buffY);
-        buffY -= 15;
-      }
-
-      if (p.divineProtectionActive && now < p.divineProtectionEndTime) {
-        const remaining = Math.ceil((p.divineProtectionEndTime - now) / 1000);
-        ctx.fillStyle = '#ffd700';
-        ctx.fillText(`🛡️ DIVINE (${remaining}s)`, 10, buffY);
-        buffY -= 15;
-      }
-
-      if (p.smokeScreenActive && now < p.smokeScreenEndTime) {
-        const remaining = Math.ceil((p.smokeScreenEndTime - now) / 1000);
-        ctx.fillStyle = '#888888';
-        ctx.fillText(`👻 INVISIBLE (${remaining}s)`, 10, buffY);
-        buffY -= 15;
-      }
-
-      if (p.whirlwindActive && now < p.whirlwindEndTime) {
-        const remaining = Math.ceil((p.whirlwindEndTime - now) / 1000);
-        ctx.fillStyle = '#ff0000';
-        ctx.fillText(`🌪️ WHIRLWIND (${remaining}s)`, 10, buffY);
-        buffY -= 15;
-      }
-
-      if (p.rage >= p.maxRage * 0.8 && p.buildName === 'berserker') {
-        ctx.fillStyle = '#ff0000';
-        ctx.fillText(`🔥 MAX RAGE`, 10, buffY);
-      }
+      // XP bar (tiny, simple)
+      const xp = Math.round((p.xp / p.xpToNextLevel) * 100);
+      ctx.fillStyle = xp < 50 ? '#666' : xp < 90 ? '#ff0' : '#0f0';
+      ctx.fillRect(10, y + 5, Math.max(1, (xp / 100) * 40), 4);
     }
 
-    // Abilities
+    // Quick ability cooldowns (bottom-right, minimal)
     if (this.game.player && this.game.player.build) {
-      this.game.player.drawCooldowns(ctx, this.game.width - 150, this.game.height - 100);
-    }
+      const p = this.game.player;
+      const x = this.game.width - 100;
+      const y = this.game.height - 30;
+      ctx.font = '11px monospace';
 
-    // Controls hint
-    ctx.fillStyle = '#888';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText('WASD: Move | SPACE: Shoot | 1/2: Skills | ESC/P: Pause', 10, this.game.height - 135);
+      p.build.abilities.forEach((ability, i) => {
+        const cd = p.getCooldown(ability);
+        ctx.fillStyle = cd > 0 ? '#666' : '#0f0';
+        ctx.fillText(`[${i + 1}] ${cd > 0 ? cd.toFixed(1) : 'OK'}`, x, y - i * 15);
+      });
+    }
 
     ctx.restore();
   }
