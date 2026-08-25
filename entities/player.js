@@ -186,7 +186,101 @@ class Player extends Entity {
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(`Lv${this.level}`, center.x, this.y + this.height + 12);
-    // Build-specific visuals disabled for 120fps target
+
+    // Draw build-specific visuals based on quality setting
+    if (this.shouldDrawBuildVisuals()) {
+      this.drawBuildSpecific(ctx, center);
+    }
+  }
+
+  shouldDrawBuildVisuals() {
+    // Only draw build visuals in quality mode
+    return this.color && this.build &&
+           typeof window !== 'undefined' &&
+           window.gameInstance &&
+           window.gameInstance.settings &&
+           window.gameInstance.settings.getQuality() !== 'performance';
+  }
+
+  // Draw build-specific visual designs
+  drawBuildSpecific(ctx, center) {
+    ctx.save();
+    const x = center.x, y = center.y, w = this.width / 2;
+
+    switch (this.buildName) {
+      case 'fighter':
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(x - w - 2, y - 5);
+        ctx.lineTo(x - w - 2, y + 5);
+        ctx.lineTo(x - w + 3, y);
+        ctx.closePath();
+        ctx.fill();
+        break;
+
+      case 'glass_cannon':
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.3;
+        const r = w + 5;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+
+      case 'tank':
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(x - w, y - 3, w * 2, 6);
+        break;
+
+      case 'balanced':
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, y - w);
+        ctx.lineTo(x, y + w);
+        ctx.moveTo(x - w, y);
+        ctx.lineTo(x + w, y);
+        ctx.stroke();
+        break;
+
+      case 'sniper':
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(x + 2, y - 1.5, w + 3, 3);
+        break;
+
+      case 'berserker':
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.5;
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2;
+          const sx = x + Math.cos(angle) * (w + 2);
+          const sy = y + Math.sin(angle) * (w + 2);
+          const ex = x + Math.cos(angle) * (w + 6);
+          const ey = y + Math.sin(angle) * (w + 6);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+        }
+        break;
+
+      case 'guardian':
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.4;
+        ctx.beginPath();
+        ctx.arc(x, y, w + 5, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+    }
+
+    ctx.restore();
   }
 
   // Draw build-specific visual designs (optimized, skip on low FPS)

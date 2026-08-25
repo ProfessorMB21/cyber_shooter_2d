@@ -105,6 +105,9 @@ class Game {
     this.player = new Player(buildName, this.width / 2, this.height - 100);
     this.player.currentStats.speed = this.player.baseStats.speed * SPEED_SCALE_FACTOR;
 
+    // Make game instance available to player for quality settings
+    window.gameInstance = this;
+
     this.enemies = [];
     this.bosses = [];
     this.projectiles = [];
