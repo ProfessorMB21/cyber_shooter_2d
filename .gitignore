@@ -3,6 +3,14 @@
 # CLAUDE.md should not be committed
 CLAUDE.md
 
+# Documentation (only CHANGELOG.md, PATCH.md, README.md are committed)
+PROJECT_COMPLETE.md
+SETTINGS_IMPLEMENTATION.md
+PERFORMANCE_OPTIMIZATION.md
+PHASE1_COMPLETE.md
+BUG_FIX_REPORT.md
+*.md.backup
+
 # Operating System Files
 .DS_Store
 Thumbs.db
