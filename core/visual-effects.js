@@ -53,7 +53,7 @@ class VisualEffectsSystem {
     });
   }
 
-  // Draw background with parallax stars
+  // Draw background with parallax stars (optimized)
   drawBackground(ctx) {
     const gradient = ctx.createLinearGradient(0, 0, 0, this.game.height);
     gradient.addColorStop(0, '#0a0a1a');
@@ -63,21 +63,13 @@ class VisualEffectsSystem {
     ctx.fillRect(0, 0, this.game.width, this.game.height);
 
     ctx.save();
+    // Draw all stars without glow for performance
+    ctx.fillStyle = '#ffffff';
     this.stars.forEach(star => {
-      const alpha = 0.3 + star.brightness * 0.7;
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.3 + star.brightness * 0.7;
       ctx.beginPath();
       ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
       ctx.fill();
-
-      if (star.size > 1.5) {
-        ctx.globalAlpha = alpha * 0.3;
-        ctx.fillStyle = '#88ccff';
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.size * 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
     });
     ctx.restore();
   }

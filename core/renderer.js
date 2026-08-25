@@ -44,14 +44,14 @@ class RenderingSystem {
   }
 
   renderUI(ctx) {
-    // Top-left info panel
     ctx.save();
+
+    // Top-left info panel (minimal redraws)
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
     ctx.fillRect(5, 5, 240, 100);
     ctx.strokeStyle = '#0f0';
     ctx.lineWidth = 2;
     ctx.strokeRect(5, 5, 240, 100);
-    ctx.restore();
 
     ctx.fillStyle = '#0f0';
     ctx.font = '16px monospace';
@@ -61,7 +61,7 @@ class RenderingSystem {
     ctx.fillText(`Wave: ${this.game.wave}`, 15, 65);
     ctx.fillText(`Kills: ${this.game.kills}`, 15, 85);
 
-    // Combo
+    // Combo (only draw if active)
     if (this.game.combo > 1) {
       ctx.fillStyle = '#ff0';
       ctx.font = 'bold 20px monospace';
@@ -73,7 +73,6 @@ class RenderingSystem {
       const p = this.game.player;
       const now = Date.now();
 
-      // Calculate effective stats with buffs
       let displayDamage = p.currentStats.damage;
       let displaySpeed = p.currentStats.speed;
 
@@ -83,16 +82,14 @@ class RenderingSystem {
       if (overloadActive) displayDamage *= 2;
       if (speedBoostActive) displaySpeed *= 1.5;
 
-      // Stats frame background
-      ctx.save();
+      // Stats frame
       ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
       ctx.fillRect(5, this.game.height - 105, 200, 100);
       ctx.strokeStyle = '#0f0';
       ctx.lineWidth = 2;
       ctx.strokeRect(5, this.game.height - 105, 200, 100);
-      ctx.restore();
 
-      // Stats with emoji icons
+      // Stats with emoji
       ctx.fillStyle = '#0f0';
       ctx.font = '14px monospace';
       ctx.textAlign = 'left';
@@ -107,19 +104,19 @@ class RenderingSystem {
       ctx.fillStyle = '#fff';
       ctx.fillText(`⭐ Lv${p.level}`, 15, this.game.height - 40);
 
-      // Build name with color
+      // Build name
       ctx.fillStyle = p.color;
       ctx.font = 'bold 12px monospace';
       ctx.fillText(p.build.name.toUpperCase(), 15, this.game.height - 22);
 
-      // Shield indicator
+      // Shield (only if active)
       if (p.shield > 0) {
         ctx.fillStyle = '#4444ff';
         ctx.font = '12px monospace';
-        ctx.fillText(`🛡️ Shield: ${Math.floor(p.shield)}`, 120, this.game.height - 85);
+        ctx.fillText(`🛡️ ${Math.floor(p.shield)}`, 120, this.game.height - 85);
       }
 
-      // XP bar with frame
+      // XP bar
       const xpPercent = p.xp / p.xpToNextLevel;
       ctx.fillStyle = '#000';
       ctx.fillRect(10, this.game.height - 12, 190, 8);
@@ -130,7 +127,7 @@ class RenderingSystem {
       ctx.fillRect(10, this.game.height - 12, 190 * xpPercent, 8);
     }
 
-    // Active buffs list
+    // Active buffs (only draw active ones)
     if (this.game.player) {
       const p = this.game.player;
       const now = Date.now();
@@ -188,6 +185,8 @@ class RenderingSystem {
     ctx.font = '12px monospace';
     ctx.textAlign = 'left';
     ctx.fillText('WASD: Move | SPACE: Shoot | 1/2: Skills | ESC/P: Pause', 10, this.game.height - 135);
+
+    ctx.restore();
   }
 }
 

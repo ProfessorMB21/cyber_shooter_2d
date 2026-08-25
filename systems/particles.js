@@ -153,77 +153,6 @@ class Particle {
     }
     return true;
   }
-
-  draw(ctx) {
-    ctx.globalAlpha = this.life;
-    ctx.fillStyle = this.color;
-
-    if (this.type === 'text') {
-      ctx.font = `bold ${this.fontSize}px 'Courier New'`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(this.config.text || '', this.x, this.y);
-    } else if (this.type === 'critical') {
-      // Draw rotating star
-      ctx.save();
-      ctx.translate(this.x, this.y);
-      ctx.rotate(this.rotation);
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      for (let i = 0; i < 4; i++) {
-        const angle = (i / 4) * Math.PI * 2;
-        const x = Math.cos(angle) * this.size;
-        const y = Math.sin(angle) * this.size;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    } else if (this.type === 'healing') {
-      // Draw expanding circle
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = this.color;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    } else if (this.type === 'buff') {
-      // Draw glowing orb with halo
-      ctx.save();
-      ctx.shadowColor = this.color;
-      ctx.shadowBlur = 15;
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = this.color;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.glowRadius, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    } else if (this.type === 'electric') {
-      // Draw jagged lightning bolts
-      ctx.strokeStyle = this.color;
-      ctx.lineWidth = Math.max(1, this.size * 0.5);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      this.segments.forEach(seg => {
-        ctx.lineTo(seg.x, seg.y);
-      });
-      ctx.stroke();
-    } else {
-      // Draw circle/ellipse (for explosion, trail, spark)
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.globalAlpha = 1;
-  }
 }
 
 class ParticleSystem {
@@ -330,7 +259,90 @@ class ParticleSystem {
   }
 
   draw(ctx) {
-    this.particles.forEach(p => p.draw(ctx));
+    // Batch particles by type for more efficient rendering
+    const byType = {};
+    this.particles.forEach(p => {
+      if (!byType[p.type]) byType[p.type] = [];
+      byType[p.type].push(p);
+    });
+
+    // Draw each type with optimized rendering
+    Object.entries(byType).forEach(([type, particles]) => {
+      this.drawBatch(ctx, type, particles);
+    });
+  }
+
+  drawBatch(ctx, type, particles) {
+    ctx.save();
+
+    if (type === 'text') {
+      particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.font = `bold ${p.fontSize}px 'Courier New'`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.config.text || '', p.x, p.y);
+      });
+    } else if (type === 'critical') {
+      particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2;
+          const x = Math.cos(angle) * p.size;
+          const y = Math.sin(angle) * p.size;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+      });
+    } else if (type === 'healing') {
+      particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    } else if (type === 'buff') {
+      particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    } else if (type === 'electric') {
+      particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = Math.max(1, p.size * 0.5);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        p.segments.forEach(seg => ctx.lineTo(seg.x, seg.y));
+        ctx.stroke();
+      });
+    } else {
+      // explosion, trail, spark - simple circles (batched)
+      particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    ctx.restore();
   }
 
   getActiveParticleCount() {

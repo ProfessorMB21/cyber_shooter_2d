@@ -14,6 +14,7 @@ import { EventSystem } from './events.js';
 import { RenderingSystem } from './renderer.js';
 import { VisualEffectsSystem } from './visual-effects.js';
 import { CollisionSystem } from './collision.js';
+import { PerformanceMonitor } from './performance.js';
 
 class Game {
   constructor(canvas) {
@@ -21,6 +22,9 @@ class Game {
     this.ctx = canvas.getContext('2d');
     this.width = canvas.width;
     this.height = canvas.height;
+
+    // Performance monitoring
+    this.perf = new PerformanceMonitor();
 
     // Input
     this.input = new InputHandler(canvas);
@@ -134,6 +138,15 @@ class Game {
   renderUI(ctx) { return this.renderer.renderUI(ctx); }
 
   loop(timestamp) {
+    // Monitor performance every frame
+    this.perf.update();
+
+    // Apply quality scaling based on FPS
+    const quality = this.perf.getQualityLevel();
+    if (this.player) {
+      this.player.skipBuildVisuals = quality === 'low';
+    }
+
     if (this.state === 'paused') {
       const result = this.sceneManager.update(this.input);
       if (result) {

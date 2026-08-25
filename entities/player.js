@@ -189,14 +189,16 @@ class Player extends Entity {
     this.drawBuildSpecific(ctx, center);
   }
 
-  // Draw build-specific visual designs
+  // Draw build-specific visual designs (optimized, skip on low FPS)
   drawBuildSpecific(ctx, center) {
+    // Skip expensive visuals if frame rate is low (dynamic quality scaling)
+    if (this.skipBuildVisuals) return;
+
     ctx.save();
     const x = center.x, y = center.y, w = this.width / 2;
 
     switch (this.buildName) {
       case 'fighter':
-        // Shield triangle on left side
         ctx.fillStyle = this.color;
         ctx.globalAlpha = 0.6;
         ctx.beginPath();
@@ -208,63 +210,49 @@ class Player extends Entity {
         break;
 
       case 'glass_cannon':
-        // Energy arc circles around entity
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.4;
-        for (let i = 0; i < 3; i++) {
-          const r = w + 5 + i * 3;
-          ctx.beginPath();
-          ctx.arc(x, y, r, 0, Math.PI * 2);
-          ctx.stroke();
-        }
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.3;
+        const r = w + 5;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
         break;
 
       case 'tank':
-        // Armor plating (horizontal bars)
         ctx.fillStyle = this.color;
         ctx.globalAlpha = 0.5;
-        for (let i = -1; i <= 1; i++) {
-          ctx.fillRect(x - w, y + i * 5, w * 2, 2);
-        }
+        ctx.fillRect(x - w, y - 3, w * 2, 6);
         break;
 
       case 'balanced':
-        // Neutral cross pattern
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 2;
         ctx.globalAlpha = 0.5;
         ctx.beginPath();
         ctx.moveTo(x, y - w);
         ctx.lineTo(x, y + w);
-        ctx.stroke();
-        ctx.beginPath();
         ctx.moveTo(x - w, y);
         ctx.lineTo(x + w, y);
         ctx.stroke();
         break;
 
       case 'sniper':
-        // Rifle barrel pointing right
         ctx.fillStyle = this.color;
         ctx.globalAlpha = 0.6;
         ctx.fillRect(x + 2, y - 1.5, w + 3, 3);
-        ctx.beginPath();
-        ctx.arc(x + w + 5, y, 2, 0, Math.PI * 2);
-        ctx.fill();
         break;
 
       case 'berserker':
-        // Radiating spikes (8 points)
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.6;
-        for (let i = 0; i < 8; i++) {
-          const angle = (i / 8) * Math.PI * 2;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.5;
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2;
           const sx = x + Math.cos(angle) * (w + 2);
           const sy = y + Math.sin(angle) * (w + 2);
-          const ex = x + Math.cos(angle) * (w + 7);
-          const ey = y + Math.sin(angle) * (w + 7);
+          const ex = x + Math.cos(angle) * (w + 6);
+          const ey = y + Math.sin(angle) * (w + 6);
           ctx.beginPath();
           ctx.moveTo(sx, sy);
           ctx.lineTo(ex, ey);
@@ -273,16 +261,11 @@ class Player extends Entity {
         break;
 
       case 'guardian':
-        // Protective aura circle
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = 0.4;
         ctx.beginPath();
         ctx.arc(x, y, w + 5, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = 0.3;
-        ctx.beginPath();
-        ctx.arc(x, y, w + 8, 0, Math.PI * 2);
         ctx.stroke();
         break;
     }
