@@ -57,21 +57,29 @@ class MenuScene {
     ctx.font = '20px monospace';
     ctx.fillText('A Retro Space Shooter', width / 2, 130);
 
-    // Difficulty selection
+    // Difficulty selection with color coding
     ctx.fillStyle = '#fff';
     ctx.font = '18px monospace';
     ctx.fillText('Select Difficulty:', width / 2, 180);
 
+    const difficultyColors = {
+      'easy': '#4f4',
+      'normal': '#ff0',
+      'hard': '#f80',
+      'nightmare': '#f00'
+    };
+
     this.difficulties.forEach((diff, i) => {
       const y = 210 + i * 35;
       const selected = i === this.difficultySelection;
+      const color = difficultyColors[diff] || '#888';
 
       if (selected) {
-        ctx.fillStyle = '#0f0';
+        ctx.fillStyle = color;
         ctx.fillRect(width / 2 - 100, y - 20, 200, 28);
         ctx.fillStyle = '#000';
       } else {
-        ctx.fillStyle = '#444';
+        ctx.fillStyle = color;
       }
 
       ctx.font = selected ? 'bold 18px monospace' : '18px monospace';

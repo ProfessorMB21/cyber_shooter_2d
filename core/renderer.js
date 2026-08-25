@@ -44,23 +44,31 @@ class RenderingSystem {
   }
 
   renderUI(ctx) {
-    // Score
-    ctx.fillStyle = '#fff';
-    ctx.font = '18px monospace';
+    // Top-left info panel
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(5, 5, 240, 100);
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(5, 5, 240, 100);
+    ctx.restore();
+
+    ctx.fillStyle = '#0f0';
+    ctx.font = '16px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`Score: ${Math.floor(this.game.score)}`, 10, 25);
-    ctx.fillText(`Time: ${Math.floor(this.game.gameTime)}s`, 10, 45);
-    ctx.fillText(`Wave: ${this.game.wave}`, 10, 65);
-    ctx.fillText(`Kills: ${this.game.kills}`, 10, 85);
+    ctx.fillText(`Score: ${Math.floor(this.game.score)}`, 15, 25);
+    ctx.fillText(`Time: ${Math.floor(this.game.gameTime)}s`, 15, 45);
+    ctx.fillText(`Wave: ${this.game.wave}`, 15, 65);
+    ctx.fillText(`Kills: ${this.game.kills}`, 15, 85);
 
     // Combo
     if (this.game.combo > 1) {
       ctx.fillStyle = '#ff0';
       ctx.font = 'bold 20px monospace';
-      ctx.fillText(`COMBO x${this.game.combo}`, 10, 110);
+      ctx.fillText(`COMBO x${this.game.combo}`, 10, 115);
     }
 
-    // Player stats
+    // Player stats panel (bottom-left)
     if (this.game.player) {
       const p = this.game.player;
       const now = Date.now();
@@ -69,58 +77,74 @@ class RenderingSystem {
       let displayDamage = p.currentStats.damage;
       let displaySpeed = p.currentStats.speed;
 
-      // Check for active buffs
       const overloadActive = p.overloadActive && now < p.overloadEndTime;
       const speedBoostActive = p.speedBoostActive && now < p.speedBoostEndTime;
 
       if (overloadActive) displayDamage *= 2;
       if (speedBoostActive) displaySpeed *= 1.5;
 
-      // Base stats display
-      ctx.fillStyle = '#fff';
+      // Stats frame background
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(5, this.game.height - 105, 200, 100);
+      ctx.strokeStyle = '#0f0';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(5, this.game.height - 105, 200, 100);
+      ctx.restore();
+
+      // Stats with emoji icons
+      ctx.fillStyle = '#0f0';
       ctx.font = '14px monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(`HP: ${Math.floor(p.hp)}/${p.currentStats.maxHp}`, 10, this.game.height - 60);
+      ctx.fillText(`❤️  ${Math.floor(p.hp)}/${p.currentStats.maxHp}`, 15, this.game.height - 85);
 
-      // Damage with buff indicator
-      if (overloadActive) {
-        ctx.fillStyle = '#ff8800'; // Orange for buffed damage
-        ctx.fillText(`DMG: ${Math.floor(displayDamage)} (2x)`, 10, this.game.height - 45);
-      } else {
-        ctx.fillStyle = '#fff';
-        ctx.fillText(`DMG: ${Math.floor(displayDamage)}`, 10, this.game.height - 45);
-      }
+      ctx.fillStyle = overloadActive ? '#ff8800' : '#fff';
+      ctx.fillText(`⚔️  ${Math.floor(displayDamage)}`, 15, this.game.height - 70);
 
-      // Speed with buff indicator
-      if (speedBoostActive) {
-        ctx.fillStyle = '#00ffff'; // Cyan for buffed speed
-        ctx.fillText(`SPD: ${Math.floor(displaySpeed)} (1.5x)`, 10, this.game.height - 30);
-      } else {
-        ctx.fillStyle = '#fff';
-        ctx.fillText(`SPD: ${Math.floor(displaySpeed)}`, 10, this.game.height - 30);
-      }
+      ctx.fillStyle = speedBoostActive ? '#00ffff' : '#fff';
+      ctx.fillText(`💨 ${Math.floor(displaySpeed)}`, 15, this.game.height - 55);
 
       ctx.fillStyle = '#fff';
-      ctx.fillText(`LVL: ${p.level}`, 10, this.game.height - 15);
+      ctx.fillText(`⭐ Lv${p.level}`, 15, this.game.height - 40);
 
-      // Shield
+      // Build name with color
+      ctx.fillStyle = p.color;
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(p.build.name.toUpperCase(), 15, this.game.height - 22);
+
+      // Shield indicator
       if (p.shield > 0) {
-        ctx.fillStyle = '#44f';
-        ctx.fillText(`Shield: ${Math.floor(p.shield)}`, 120, this.game.height - 60);
+        ctx.fillStyle = '#4444ff';
+        ctx.font = '12px monospace';
+        ctx.fillText(`🛡️ Shield: ${Math.floor(p.shield)}`, 120, this.game.height - 85);
       }
 
-      // Active buffs list
-      let buffY = this.game.height - 135;
+      // XP bar with frame
+      const xpPercent = p.xp / p.xpToNextLevel;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(10, this.game.height - 12, 190, 8);
+      ctx.strokeStyle = '#0f0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(10, this.game.height - 12, 190, 8);
+      ctx.fillStyle = '#0f0';
+      ctx.fillRect(10, this.game.height - 12, 190 * xpPercent, 8);
+    }
+
+    // Active buffs list
+    if (this.game.player) {
+      const p = this.game.player;
+      const now = Date.now();
+      let buffY = this.game.height - 125;
       ctx.font = '12px monospace';
 
-      if (overloadActive) {
+      if (p.overloadActive && now < p.overloadEndTime) {
         const remaining = Math.ceil((p.overloadEndTime - now) / 1000);
         ctx.fillStyle = '#ff8800';
         ctx.fillText(`⚡ OVERLOAD (${remaining}s)`, 10, buffY);
         buffY -= 15;
       }
 
-      if (speedBoostActive) {
+      if (p.speedBoostActive && now < p.speedBoostEndTime) {
         const remaining = Math.ceil((p.speedBoostEndTime - now) / 1000);
         ctx.fillStyle = '#00ffff';
         ctx.fillText(`⚡ SPEED BOOST (${remaining}s)`, 10, buffY);
@@ -152,13 +176,6 @@ class RenderingSystem {
         ctx.fillStyle = '#ff0000';
         ctx.fillText(`🔥 MAX RAGE`, 10, buffY);
       }
-
-      // XP bar
-      const xpPercent = p.xp / p.xpToNextLevel;
-      ctx.fillStyle = '#333';
-      ctx.fillRect(10, this.game.height - 10, 200, 6);
-      ctx.fillStyle = '#4f4';
-      ctx.fillRect(10, this.game.height - 10, 200 * xpPercent, 6);
     }
 
     // Abilities
