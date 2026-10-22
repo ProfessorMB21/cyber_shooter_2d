@@ -1,5 +1,23 @@
 # Patch History
 
+## 2026-10-23 - The Abilities Respect Their Cooldown
+
+### Fixed
+- **Seven of the fourteen abilities ignored their cooldown.** The
+  cooldown was written under the ability's name lowercased with the
+  spaces stripped (`healingshot`) and the guard inside the ability read
+  a different key (`healingShot`), so it never fired. Healing Shot,
+  Ground Slam, Adrenaline Rush, Sniper Shot, Smoke Screen, Berserk Rage
+  and Divine Protection went off on every press while the panel counted
+  the cooldown down. The AI and the readout were right; only the effect
+  ignored it.
+
+### Changed
+- `entities/abilities.js` - `PlayerAbilities.isReady()` reads the
+  cooldown through `player.cooldownKey()`, the same way `setCooldown()`
+  writes it, and every ability guard goes through it.
+- `README.md` - the ability cooldowns.
+
 ## 2026-10-23 - The Wingman Is A Target
 
 ### Fixed

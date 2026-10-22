@@ -2,6 +2,40 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Abilities Respect Their Cooldown (2026-10-23)
+
+### Seven of the fourteen abilities could be used over and over
+A cooldown is written under the ability's name, lowercased with the spaces
+stripped - `HEALING SHOT` goes in as `healingshot`. The guard inside each
+ability read a different key: `cooldowns.healingShot`. It never found
+anything there, so the guard never fired and the ability went off on every
+press while the panel in the corner counted the cooldown down.
+
+The abilities with two words in their name were the ones affected - the
+other five have the same key either way:
+
+| Ability | Cooldown |
+|---|---|
+| Healing Shot | 6 s |
+| Ground Slam | 8 s |
+| Adrenaline Rush | 12 s |
+| Sniper Shot | 10 s |
+| Smoke Screen | 15 s |
+| Berserk Rage | 12 s |
+| Divine Protection | 20 s |
+
+What it meant in play: a fighter could heal a quarter of its health on
+every tap of the heal key, the tank could slam the ground every time the
+key went down, and the guardian could pop its immunity as often as it
+liked. The cooldown was still being written, so the panel and the AI both
+had it right - only the effect itself ignored it.
+
+### The fix
+Every guard now asks the same question through the same key:
+`PlayerAbilities.isReady()` reads the cooldown through
+`player.cooldownKey()`, exactly the way `setCooldown()` writes it. There
+is one place where the key is derived and both ends go through it.
+
 ## The Wingman Is A Target (2026-10-23)
 
 ### The enemies were going for the nearest player and never reaching anybody

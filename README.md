@@ -239,6 +239,12 @@ Seven builds, each with two active abilities and a per-level passive.
 Base values live in `config/player-builds.js`. Speed is scaled by
 `SPEED_SCALE_FACTOR` (30) at load time.
 
+### Ability cooldowns
+Every ability has a cooldown, and the panel in the corner of the screen
+counts it down. Firing an ability that is on cooldown does nothing - the
+readout is the truth, and it is the same cooldown for the player and for
+the AI wingman.
+
 ### Leveling and stat growth
 
 Kills award XP. Each level threshold is 1.5x the previous one, and a level
