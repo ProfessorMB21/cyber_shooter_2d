@@ -36,12 +36,38 @@ environment.
 
 ## Controls
 
+The mouse works on **every** screen - the main menu, the build select, the
+wingman select, the settings, the lobby, the pause menu and the game over
+screen. Hovering an entry selects it and clicking activates it. The
+keyboard always works as well, so no screen is mouse-only.
+
+### Input schemes
+
+What the keyboard and the mouse do *in a run* is chosen in Settings and is
+remembered between sessions.
+
+| Scheme | Move | Aim | Shoot | Abilities |
+|---|---|---|---|---|
+| Keyboard Only | `WASD` / arrows | Straight up | `SPACE` | `1` and `2` |
+| Keyboard + Mouse | `WASD` / arrows | The mouse | Left click | `1` and `2` |
+| Mouse + QER | The mouse | The mouse | Left click | `Q` and `E` |
+
+In the mouse schemes the ship steers towards the pointer: it eases into it
+rather than snapping to it, and it stops when the pointer is on top of the
+ship. The pointer is drawn as a crosshair, and in the Keyboard + Mouse
+scheme a line runs from the ship to it.
+
+The scheme is the same in a networked run - the input the client sends to
+the server is built by the same code, so the server needs to know nothing
+about it.
+
 ### Main menu
 | Key | Action |
 |---|---|
 | `UP` / `DOWN` | Choose the game mode |
 | `SPACE` | Select the mode |
 | `S` | Settings |
+| Mouse | Click an entry to open it |
 
 ### Build / difficulty select
 | Key | Action |
@@ -50,6 +76,7 @@ environment.
 | `LEFT` / `RIGHT` | Choose difficulty (4) |
 | `SPACE` | Start the run (in dualist, go to the wingman screen) |
 | `ESC` | Back to the main menu |
+| Mouse | Click a build, a difficulty, or START / BACK |
 
 ### Wingman select (dualist only)
 | Key | Action |
@@ -57,6 +84,7 @@ environment.
 | `UP` / `DOWN` | Choose the wingman's build (7) |
 | `SPACE` | Start the run |
 | `ESC` | Back to the build select |
+| Mouse | Click a build, or START / BACK |
 
 ### The online lobby
 | Key | Action |
@@ -65,6 +93,7 @@ environment.
 | `SPACE` | Join the chosen room |
 | `C` | Create a room |
 | `ESC` | Back to the main menu |
+| Mouse | Click a room to join it, or CREATE / BACK |
 
 ### In a room
 | Key | Action |
@@ -73,22 +102,30 @@ environment.
 | `LEFT` / `RIGHT` | Choose your build |
 | `ENTER` | Start the run |
 | `ESC` | Leave the room |
+| Mouse | Click the arrows to change the callsign and the build, or START / LEAVE |
 
 ### Settings
 | Key | Action |
 |---|---|
-| `UP` / `DOWN` | Choose performance profile |
+| `UP` / `DOWN` | Choose a performance profile or an input scheme |
 | `SPACE` | Select (confirms on a second press) |
 | `ESC` | Back to the main menu |
+| Mouse | Click an entry, or APPLY / CANCEL / BACK |
 
 ### In game
 | Key | Action |
 |---|---|
-| `WASD` / arrow keys | Move |
-| `SPACE` | Shoot |
-| `1` / `2` | Build ability 1 / 2 |
+| `WASD` / arrow keys | Move (the mouse moves the ship in the Mouse + QER scheme) |
+| Mouse | Aim (Keyboard + Mouse and Mouse + QER) |
+| Left click | Shoot (Keyboard + Mouse and Mouse + QER) |
+| `SPACE` | Shoot (Keyboard Only) |
+| `1` / `2` | Build ability 1 / 2 (Keyboard Only and Keyboard + Mouse) |
+| `Q` / `E` | Build ability 1 / 2 (Mouse + QER) |
 | `ESC` or `P` | Pause |
 | `F` | Toggle the debug overlay |
+
+The two ability panels in the corner of the screen are buttons as well -
+click one to fire that ability.
 
 ### Pause menu
 | Key | Action |
@@ -96,6 +133,7 @@ environment.
 | `ESC` or `P` | Resume |
 | `R` | Restart the run (same build and difficulty) |
 | `Q` | Quit to the main menu |
+| Mouse | Click RESUME, RESTART or QUIT |
 
 Quitting abandons the current run and returns to the main menu. The app
 keeps running - no reload, no restart.
@@ -104,6 +142,7 @@ keeps running - no reload, no restart.
 | Key | Action |
 |---|---|
 | `SPACE` | Return to the main menu |
+| Mouse | Click RETURN TO THE MENU |
 
 ## Game modes
 
@@ -350,6 +389,10 @@ Chosen in Settings and persisted to `localStorage`.
 On top of the selected profile, the game drops build visuals automatically
 when the measured frame rate falls below 45 fps.
 
+The Settings screen holds both the performance profiles and the input
+schemes. A change is confirmed before it is applied, and it is saved to
+`localStorage` straight away.
+
 ## Project structure
 
 ```
@@ -369,9 +412,10 @@ core/
   spawning.js         Enemy, boss and pickup spawning
   events.js           Kill handling, scoring, XP
   renderer.js         Draw order, HUD, quality-specific UI
+  controls.js         Turns the keyboard and the mouse into the input object
   visual-effects.js   Starfield, screen shake, background
   performance.js      Frame-time sampling and FPS
-  settings.js         Quality presets and localStorage persistence
+  settings.js         Quality presets, input schemes and localStorage persistence
   debug-overlay.js    F-key overlay: fps, draw counts, entity counts
   spatial.js          Grid index (not currently used)
   index.js            Re-exports the core systems
@@ -388,9 +432,10 @@ entities/
 
 scenes/
   index.js            SceneManager and re-exports
+  ui.js               The shared mouse plumbing: the item registry and the buttons
   menu.js             Main menu and build/difficulty select
   lobby.js            The online lobby: rooms, callsign, build
-  settings.js         Performance profile select
+  settings.js         Performance profile and input scheme select
   pause.js            Pause overlay
   gameover.js         Results screen
 
@@ -451,8 +496,15 @@ running game. They are candidates for deletion.
   same in every mode. The positions are interpolated between the two most
   recent snapshots, which is why the world is drawn a snapshot behind.
 - **Audio**: none. Not implemented.
-- **Mouse**: tracked but unused. Shots travel straight up; aiming is
-  keyboard-only.
+- **Mouse**: fully supported, on every screen and in every mode. The
+  pointer position is converted into world coordinates before it is used,
+  so aiming works the same in the local modes and in a networked run,
+  where the shared world is drawn scaled to fit the window.
+- **One layout, drawn and clicked.** Every screen computes its layout
+  once and both draws it and hit-tests against it, so a button cannot
+  drift from the rectangle the mouse actually hits. A click is matched
+  against the position the click happened at, not against wherever the
+  pointer happens to be when the frame runs.
 
 ## Known issues
 
@@ -466,7 +518,6 @@ running game. They are candidates for deletion.
 - `config/constants.js` exports `PARTICLES` and `STAT_GROWTH`, which nothing
   reads.
 - `GAME_SETTINGS.TITLE` still says "Simple Claude Game".
-- The mouse is not used for aiming.
 
 ## Development
 

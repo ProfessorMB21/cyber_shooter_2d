@@ -1,5 +1,7 @@
 // Core Rendering System
 
+import { mouseWorldPos } from './controls.js';
+
 class RenderingSystem {
   constructor(game) {
     this.game = game;
@@ -60,6 +62,10 @@ class RenderingSystem {
       ctx.fillText(player.playerName, center.x, center.y - 26);
     }
 
+    // The line from the ship to the pointer, when the mouse does the
+    // aiming. It is drawn in the world, so it moves with the ship.
+    this.renderAimLine(ctx);
+
     // Draw enemies (with quality-based culling)
     if (settings.getSetting('entityCulling')) {
       // Performance/Balanced: culling enabled
@@ -107,6 +113,10 @@ class RenderingSystem {
   renderUI(ctx) {
     const settings = this.game.settings;
 
+    // The ability buttons are collected as they are drawn, so the mouse
+    // can find them.
+    this.game.hudButtons = [];
+
     if (settings.getQuality() === 'quality') {
       // Quality mode: full UI with frames and details
       this.renderUIQuality(ctx);
@@ -121,6 +131,47 @@ class RenderingSystem {
     this.renderLevelUpNotice(ctx);
     this.renderNotice(ctx);
     this.renderRoster(ctx);
+    this.renderCrosshair(ctx);
+  }
+
+  // The line from the ship to the pointer. It is only drawn when the
+  // mouse does the aiming - with the keyboard alone the shots go straight
+  // up and there is nothing to point at.
+  renderAimLine(ctx) {
+    const game = this.game;
+    if (game.settings.getInputScheme() !== 'keyboard_mouse') return;
+    const player = game.player;
+    if (!player || player.dead) return;
+    const center = player.getCenter();
+    const mouse = mouseWorldPos(game.input, game);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(center.x, center.y - 20);
+    ctx.lineTo(mouse.x, mouse.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // The crosshair. It is only drawn when the mouse is part of the input
+  // scheme - there is no point in it when the shots go straight up.
+  renderCrosshair(ctx) {
+    const game = this.game;
+    if (game.settings.getInputScheme() === 'keyboard') return;
+    const x = game.input.mouseX;
+    const y = game.input.mouseY;
+    ctx.save();
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.moveTo(x - 17, y); ctx.lineTo(x - 5, y);
+    ctx.moveTo(x + 5, y); ctx.lineTo(x + 17, y);
+    ctx.moveTo(x, y - 17); ctx.lineTo(x, y - 5);
+    ctx.moveTo(x, y + 5); ctx.lineTo(x, y + 17);
+    ctx.stroke();
+    ctx.restore();
   }
 
   // A message in the middle of the screen, fading away. It says the things
@@ -249,6 +300,7 @@ class RenderingSystem {
         const cd = p.getCooldown(ability);
         ctx.fillStyle = cd > 0 ? '#666' : '#0f0';
         ctx.fillText(`[${i + 1}] ${cd > 0 ? cd.toFixed(1) : 'OK'}`, x, y - i * 15);
+        this.game.hudButtons.push({ x, y: y - i * 15 - 12, w: 80, h: 14, index: i });
       });
     }
 
@@ -321,7 +373,7 @@ class RenderingSystem {
 
     // Abilities
     if (this.game.player && this.game.player.build) {
-      this.game.player.drawCooldowns(ctx, this.game.width - 150, this.game.height - 100);
+      this.game.hudButtons = this.game.player.drawCooldowns(ctx, this.game.width - 150, this.game.height - 100) || [];
     }
 
     ctx.restore();
@@ -409,7 +461,7 @@ class RenderingSystem {
 
     // Abilities (full display)
     if (this.game.player && this.game.player.build) {
-      this.game.player.drawCooldowns(ctx, this.game.width - 160, this.game.height - 110);
+      this.game.hudButtons = this.game.player.drawCooldowns(ctx, this.game.width - 160, this.game.height - 110) || [];
     }
 
     ctx.restore();

@@ -2,6 +2,108 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Mouse And The Input Schemes (2026-10-23)
+
+### The feature
+The mouse now works on **every** screen, and what the mouse and the
+keyboard do in a run is the player's choice. There are three schemes, and
+the one in use is chosen in Settings and remembered between sessions.
+
+| Scheme | Move | Aim | Shoot | Abilities |
+|---|---|---|---|---|
+| Keyboard Only | `WASD` / arrows | Straight up | `SPACE` | `1` and `2` |
+| Keyboard + Mouse | `WASD` / arrows | The mouse | Left click | `1` and `2` |
+| Mouse + QER | The mouse | The mouse | Left click | `Q` and `E` |
+
+The mouse used to be tracked and thrown away. Shots were hardcoded
+straight up in `core/combat.js` and `input.getMouseDirection()` was dead
+code. Both are gone; the shots now go where the pointer is.
+
+### The mouse on every screen
+The main menu, the build select, the wingman select, the settings, the
+lobby, the room, the pause menu and the game over screen all take the
+pointer: hovering selects an entry and clicking activates it. The ability
+panels in the corner of the screen are buttons too - click one and that
+ability fires.
+
+The keyboard still works everywhere, so nothing became mouse-only.
+
+### One layout, drawn and clicked
+Every screen computes its layout once and then both draws it and hit-tests
+against it. The rectangle the mouse hits and the rectangle the player
+sees are the same numbers, so a button cannot drift away from the thing
+it activates - and the hit test is not a frame behind the drawing, because
+the layout is recomputed when the screen is updated rather than recorded
+when it is rendered.
+
+`scenes/ui.js` holds the shared plumbing: a registry of clickable
+rectangles, a helper that lays a row of buttons out, and the button
+drawing itself.
+
+### The scheme is the same online
+`core/controls.js` turns the keyboard and the mouse into the input object
+the simulation already understood. Both the local game and the online
+client build their input with it, so a networked run behaves exactly like
+a local one and the server needs to know nothing about the scheme.
+
+The pointer is in canvas coordinates and the shared world is drawn scaled
+to fit the window, so the position is converted into world coordinates
+before it is used.
+
+### Files Modified
+- `core/controls.js` - new: the one place the keyboard and the mouse
+  become the input object
+- `scenes/ui.js` - new: the clickable item registry and the buttons
+- `core/settings.js` - the three schemes, and they are saved to
+  `localStorage` like the performance profile is
+- `input.js` - the click position, the "the mouse moved" flag, the
+  right button ignored and the browser's own menu suppressed;
+  `getMouseDirection()` deleted
+- `core/game.js` - the local input, the ability buttons in the HUD, and
+  the click that belongs to the game rather than to the pause menu
+- `core/renderer.js` - the crosshair, the line from the ship to the
+  pointer, and the ability panels collected as they are drawn
+- `entities/player.js` - the ability panels return their rectangles, so
+  the mouse can find them
+- `core/online-session.js` - the input that goes to the server is built
+  by the same code
+- `scenes/menu.js`, `scenes/settings.js`, `scenes/lobby.js`,
+  `scenes/pause.js`, `scenes/gameover.js` - the mouse on every screen
+
+### Fixed
+- **A click in the game could press a button in the pause menu.** Click
+  and press `ESC` in the same frame and the pause menu opened on top of
+  the click that was still in flight, and pressed whatever was under the
+  pointer - quitting the run, without the player touching the mouse
+  again. The click belongs to the game, so the game takes it when it
+  pauses.
+- **A click landed on whatever the pointer was over, not on what was
+  pressed.** The screens matched the click against the item under the
+  pointer *now*. If the pointer drifted between the button going down
+  and the frame that handled it, the wrong thing was chosen. The click
+  is now matched against the position the click happened at, and the
+  press position comes from the event rather than from the last move.
+- **The mouse used to be tracked and thrown away.** The shots were
+  hardcoded straight up in `core/combat.js` and `input.getMouseDirection()`
+  was dead code. Both are gone.
+
+### Verified
+A new headless probe drives the real game with a real mouse: the three
+schemes are offered, a click on the menu opens the settings, the settings
+apply a scheme and remember it, the mouse aims the shot and the
+projectile travels at that angle, a click shoots, the mouse moves the
+ship, `Q` and `E` fire the abilities, the ability buttons in the HUD
+take a click, a click from the game does not press a pause button, a
+click lands where the button went down, the pause menu's QUIT button
+works, the game over button works, and nothing throws. **26 assertions,
+26 passing.**
+
+The existing suite is unchanged: 55 assertions, 55 passing. The mode
+probe: 12, 12. The dualist probe: 8, 8. The AI probe: 42, 42. The
+simulation probe: 4, 4. The online probe: 17, 17. The performance is
+unchanged: 253.42 fills per frame against a baseline of 253.18, one
+`requestAnimationFrame` callback per frame, no errors.
+
 ## The Online Client (2026-10-23)
 
 ### The feature

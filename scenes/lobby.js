@@ -7,6 +7,7 @@
 
 import { BUILDS } from '../entities/player.js';
 import { C2S, S2C, MAX_PLAYERS } from '../shared/protocol.js';
+import { ScreenItems, readMouse, drawButton } from './ui.js';
 
 // The callsigns a player can pick from. Picking one is easier than typing
 // one, and it keeps the roster readable.
@@ -29,6 +30,10 @@ class LobbyScene {
     this.callsignSelection = 0;
     this.error = null;
     this.status = '';
+
+    // The clickable parts of the screen, and the one the pointer is on
+    this.items = new ScreenItems();
+    this.hoveredId = null;
 
     const net = game.network;
 
@@ -104,14 +109,72 @@ class LobbyScene {
     return entries;
   }
 
+  // Where the room list is. The drawing and the mouse both work from it.
+  layoutRooms(width, height) {
+    this.items.reset();
+    const entries = this.roomEntries();
+    const startY = height / 2 - 120;
+
+    const rows = entries.map((entry, i) => {
+      const y = startY + i * 45;
+      this.items.add('room', width / 2 - 250, y - 24, 500, 38, { index: i, kind: 'room' });
+      return { entry, y };
+    });
+
+    const buttons = this.items.buttonRow(['back'], height - 70, width);
+    return { entries, startY, rows, buttons };
+  }
+
+  // Where the pickers and the buttons are in a room.
+  layoutRoom(width, height) {
+    this.items.reset();
+    const pickerX = width / 2 + 60;
+
+    // An arrow on each side of the two pickers
+    const arrows = {
+      callsign_prev: { x: pickerX - 115, y: 222, w: 34, h: 34 },
+      callsign_next: { x: pickerX + 81, y: 222, w: 34, h: 34 },
+      build_prev: { x: pickerX - 115, y: 342, w: 34, h: 34 },
+      build_next: { x: pickerX + 81, y: 342, w: 34, h: 34 }
+    };
+    for (const [id, rect] of Object.entries(arrows)) {
+      this.items.add(id, rect.x, rect.y, rect.w, rect.h, { kind: 'arrow' });
+    }
+
+    const buttons = this.items.buttonRow(['start', 'leave'], height - 70, width);
+    return { pickerX, arrows, buttons };
+  }
+
+  // The connecting and the disconnected screen. The only thing to click
+  // on the disconnected one is the way back in.
+  layoutConnecting(width, height, withRetry) {
+    this.items.reset();
+    const ids = withRetry ? ['retry', 'back'] : ['back'];
+    const buttons = this.items.buttonRow(ids, height / 2 + 40, width);
+    return { buttons };
+  }
+
   update(input) {
     if (this.state === 'disconnected') {
+      this.layoutConnecting(this.game.width, this.game.height, true);
+      const mouse = readMouse(this.items, input);
+      this.hoveredId = mouse.hovered ? mouse.hovered.id : null;
+      if (mouse.clicked) {
+        if (mouse.clicked.id === 'retry') this.enter();
+        if (mouse.clicked.id === 'back') return { action: 'back_to_menu' };
+      }
       if (input.isKeyPressed(' ')) this.enter();
       if (input.isKeyPressed('escape')) return { action: 'back_to_menu' };
       return null;
     }
 
     if (this.state === 'connecting') {
+      this.layoutConnecting(this.game.width, this.game.height, false);
+      const mouse = readMouse(this.items, input);
+      this.hoveredId = mouse.hovered ? mouse.hovered.id : null;
+      if (mouse.clicked && mouse.clicked.id === 'back') {
+        return { action: 'back_to_menu' };
+      }
       if (input.isKeyPressed('escape')) return { action: 'back_to_menu' };
       return null;
     }
@@ -121,20 +184,33 @@ class LobbyScene {
   }
 
   updateRooms(input) {
-    const entries = this.roomEntries();
+    const layout = this.layoutRooms(this.game.width, this.game.height);
+    const entries = layout.entries;
+
     if (input.isKeyPressed('ArrowUp')) {
       this.selection = (this.selection - 1 + entries.length) % entries.length;
     }
     if (input.isKeyPressed('ArrowDown')) {
       this.selection = (this.selection + 1) % entries.length;
     }
-    if (input.isKeyPressed(' ')) {
-      const entry = entries[this.selection];
-      if (entry.kind === 'create') {
-        this.game.network.send({ t: C2S.CREATE_ROOM });
-      } else {
-        this.game.network.send({ t: C2S.JOIN_ROOM, roomId: entry.id });
+
+    const mouse = readMouse(this.items, input);
+    this.hoveredId = mouse.hovered ? mouse.hovered.id : null;
+    if (mouse.hovered && mouse.moved && mouse.hovered.kind === 'room') {
+      this.selection = mouse.hovered.index;
+    }
+    if (mouse.clicked) {
+      const clicked = mouse.clicked;
+      if (clicked.kind === 'room') {
+        this.selection = clicked.index;
+        this.joinEntry(entries[this.selection]);
+      } else if (clicked.id === 'back') {
+        return { action: 'back_to_menu' };
       }
+    }
+
+    if (input.isKeyPressed(' ')) {
+      this.joinEntry(entries[this.selection]);
     }
     if (input.isKeyPressed('c')) {
       this.game.network.send({ t: C2S.CREATE_ROOM });
@@ -143,33 +219,71 @@ class LobbyScene {
     return null;
   }
 
+  // Create a room, or join one that is already there.
+  joinEntry(entry) {
+    if (entry.kind === 'create') {
+      this.game.network.send({ t: C2S.CREATE_ROOM });
+    } else {
+      this.game.network.send({ t: C2S.JOIN_ROOM, roomId: entry.id });
+    }
+  }
+
   updateRoom(input) {
+    this.layoutRoom(this.game.width, this.game.height);
+
     if (input.isKeyPressed('ArrowUp')) {
-      this.callsignSelection = (this.callsignSelection - 1 + CALLSIGNS.length) % CALLSIGNS.length;
-      this.sendCallsign();
+      this.cycleCallsign(-1);
     }
     if (input.isKeyPressed('ArrowDown')) {
-      this.callsignSelection = (this.callsignSelection + 1) % CALLSIGNS.length;
-      this.sendCallsign();
+      this.cycleCallsign(1);
     }
     if (input.isKeyPressed('ArrowLeft')) {
-      this.buildSelection = (this.buildSelection - 1 + this.buildNames.length) % this.buildNames.length;
-      this.sendBuild();
+      this.cycleBuild(-1);
     }
     if (input.isKeyPressed('ArrowRight')) {
-      this.buildSelection = (this.buildSelection + 1) % this.buildNames.length;
-      this.sendBuild();
+      this.cycleBuild(1);
     }
+
+    const mouse = readMouse(this.items, input);
+    this.hoveredId = mouse.hovered ? mouse.hovered.id : null;
+    if (mouse.clicked) {
+      const id = mouse.clicked.id;
+      if (id === 'callsign_prev') this.cycleCallsign(-1);
+      else if (id === 'callsign_next') this.cycleCallsign(1);
+      else if (id === 'build_prev') this.cycleBuild(-1);
+      else if (id === 'build_next') this.cycleBuild(1);
+      else if (id === 'start') this.game.network.send({ t: C2S.START });
+      else if (id === 'leave') {
+        this.leaveRoom();
+        return null;
+      }
+    }
+
     if (input.isKeyPressed('Enter')) {
       this.game.network.send({ t: C2S.START });
     }
     if (input.isKeyPressed('escape')) {
-      this.game.network.send({ t: C2S.LEAVE_ROOM });
-      this.room = null;
-      this.state = 'rooms';
-      this.game.network.send({ t: C2S.ROOMS });
+      this.leaveRoom();
     }
     return null;
+  }
+
+  // Leave the room and go back to the list of rooms.
+  leaveRoom() {
+    this.game.network.send({ t: C2S.LEAVE_ROOM });
+    this.room = null;
+    this.state = 'rooms';
+    this.game.network.send({ t: C2S.ROOMS });
+  }
+
+  cycleCallsign(step) {
+    this.callsignSelection = (this.callsignSelection + step + CALLSIGNS.length) % CALLSIGNS.length;
+    this.sendCallsign();
+  }
+
+  cycleBuild(step) {
+    this.buildSelection = (this.buildSelection + step + this.buildNames.length) % this.buildNames.length;
+    this.sendBuild();
   }
 
   sendBuild() {
@@ -218,7 +332,10 @@ class LobbyScene {
     ctx.fillText('CONNECTING...', width / 2, height / 2);
     ctx.fillStyle = '#888';
     ctx.font = '14px monospace';
-    ctx.fillText('[ESC] Back to the menu', width / 2, height - 40);
+    ctx.fillText('[ESC] Back to the menu', width / 2, height - 110);
+
+    const layout = this.layoutConnecting(width, height, false);
+    drawButton(ctx, { ...layout.buttons.back, label: 'BACK (ESC)', hovered: this.hoveredId === 'back' });
   }
 
   renderDisconnected(ctx, width, height) {
@@ -228,20 +345,23 @@ class LobbyScene {
     ctx.fillText('DISCONNECTED', width / 2, height / 2);
     ctx.fillStyle = '#888';
     ctx.font = '14px monospace';
-    ctx.fillText('[SPACE] Try again  [ESC] Back to the menu', width / 2, height / 2 + 40);
+    ctx.fillText('[SPACE] Try again  [ESC] Back to the menu', width / 2, height / 2 - 30);
+
+    const layout = this.layoutConnecting(width, height, true);
+    drawButton(ctx, { ...layout.buttons.retry, label: 'TRY AGAIN (SPACE)', hovered: this.hoveredId === 'retry' });
+    drawButton(ctx, { ...layout.buttons.back, label: 'BACK (ESC)', hovered: this.hoveredId === 'back' });
   }
 
   renderRooms(ctx, width, height) {
-    const entries = this.roomEntries();
-    const startY = height / 2 - 120;
+    const layout = this.layoutRooms(width, height);
+    const { entries, startY, rows, buttons } = layout;
 
     ctx.fillStyle = '#fff';
     ctx.font = '18px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('ROOMS', width / 2, startY - 40);
 
-    entries.forEach((entry, i) => {
-      const y = startY + i * 45;
+    rows.forEach(({ entry, y }, i) => {
       const selected = i === this.selection;
 
       if (selected) {
@@ -279,10 +399,15 @@ class LobbyScene {
     ctx.fillStyle = '#888';
     ctx.font = '14px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('[UP/DOWN] Choose  [SPACE] Join  [C] Create  [ESC] Back', width / 2, height - 40);
+    ctx.fillText('[UP/DOWN] Choose  [SPACE] Join  [C] Create  [ESC] Back', width / 2, height - 105);
+
+    drawButton(ctx, { ...buttons.back, label: 'BACK (ESC)', hovered: this.hoveredId === 'back' });
   }
 
   renderRoom(ctx, width, height) {
+    const layout = this.layoutRoom(width, height);
+    const { pickerX, arrows, buttons } = layout;
+
     ctx.fillStyle = '#0f0';
     ctx.font = 'bold 20px monospace';
     ctx.textAlign = 'center';
@@ -307,7 +432,6 @@ class LobbyScene {
     });
 
     // The two pickers
-    const pickerX = width / 2 + 60;
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
     ctx.font = '16px monospace';
@@ -326,12 +450,36 @@ class LobbyScene {
     ctx.font = '13px monospace';
     ctx.fillText(build ? build.description : '', pickerX, 390);
 
+    // The arrows on either side of the pickers
+    this.drawArrow(ctx, 'callsign_prev', arrows.callsign_prev, '◀');
+    this.drawArrow(ctx, 'callsign_next', arrows.callsign_next, '▶');
+    this.drawArrow(ctx, 'build_prev', arrows.build_prev, '◀');
+    this.drawArrow(ctx, 'build_next', arrows.build_next, '▶');
+
     ctx.fillStyle = '#888';
     ctx.font = '14px monospace';
     ctx.fillText(
       `[UP/DOWN] Callsign  [LEFT/RIGHT] Build  [ENTER] Start the run  [ESC] Leave`,
-      width / 2, height - 40
+      width / 2, height - 105
     );
+
+    drawButton(ctx, { ...buttons.start, label: 'START THE RUN (ENTER)', hovered: this.hoveredId === 'start' });
+    drawButton(ctx, { ...buttons.leave, label: 'LEAVE (ESC)', hovered: this.hoveredId === 'leave' });
+  }
+
+  // An arrow on either side of a picker.
+  drawArrow(ctx, id, rect, label) {
+    const { x, y, w, h } = rect;
+    const hovered = this.hoveredId === id;
+    ctx.fillStyle = hovered ? '#0f0' : 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = hovered ? '#000' : '#0f0';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x + w / 2, y + h - 10);
   }
 }
 

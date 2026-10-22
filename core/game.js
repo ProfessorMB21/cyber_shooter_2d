@@ -11,6 +11,7 @@ import { MenuScene, GameOverScene, PauseScene, SettingsScene, LobbyScene, SceneM
 import { AIController } from '../systems/ai.js';
 import { Simulation } from './simulation.js';
 import { OnlineSession } from './online-session.js';
+import { buildLocalInput } from './controls.js';
 import { RenderingSystem } from './renderer.js';
 import { VisualEffectsSystem } from './visual-effects.js';
 import { PerformanceMonitor } from './performance.js';
@@ -67,6 +68,10 @@ class Game extends Simulation {
     // of a run
     this.notice = null;
     this.noticeTimer = 0;
+
+    // The ability buttons in the HUD, as the last frame drew them. The
+    // mouse can click them.
+    this.hudButtons = [];
 
     // The shared world is a fixed size, whatever the window is. The client
     // draws it scaled to fit.
@@ -358,6 +363,10 @@ class Game extends Simulation {
             this.applyQualitySettings();
             this.state = 'menu';
             this.sceneManager.switchTo('menu');
+          } else if (result.action === 'apply_input_scheme') {
+            this.settings.setInputScheme(result.scheme);
+            this.state = 'menu';
+            this.sceneManager.switchTo('menu');
           } else if (result.action === 'back_to_menu') {
             this.quitToMenu();
           } else if (result.action === 'menu') {
@@ -387,6 +396,11 @@ class Game extends Simulation {
         }
         // The pause scene has to be activated as well - without it the pause
         // menu never receives input and the game cannot be unpaused.
+        //
+        // A click that was in flight belongs to the game, not to the menu
+        // that is about to open. Left alone, the pause menu would act on it
+        // and press whatever happened to be under the pointer.
+        this.input.wasMouseClicked();
         this.state = 'paused';
         this.sceneManager.switchTo('pause');
         return;
@@ -429,8 +443,8 @@ class Game extends Simulation {
     this.online.update(deltaTime);
   }
 
-  // The inputs for this frame: the local player comes from the keyboard,
-  // and every AI player comes from its controller.
+  // The inputs for this frame: the local player comes from the keyboard
+  // and the mouse, and every AI player comes from its controller.
   buildInputs(deltaTime = 1 / 60) {
     const inputs = new Map();
     for (const player of this.players) {
@@ -440,17 +454,41 @@ class Game extends Simulation {
         continue;
       }
       if (player !== this.player) continue;
-      const movement = this.input.getMovement();
-      inputs.set(player.playerId, {
-        dx: movement.dx,
-        dy: movement.dy,
-        shoot: this.input.isKeyDown(' '),
-        ability1: this.input.isKeyPressed('1'),
-        ability2: this.input.isKeyPressed('2'),
-        aim: null
-      });
+      inputs.set(player.playerId, this.localInput());
     }
     return inputs;
+  }
+
+  // The local player's input for this frame, built from the keyboard and
+  // the mouse according to the input scheme.
+  localInput() {
+    const input = buildLocalInput(this.input, this.settings.getInputScheme(), this);
+    // A click on one of the ability buttons in the HUD fires that ability.
+    const clicked = this.takeAbilityClick();
+    if (clicked === 0) input.ability1 = true;
+    else if (clicked === 1) input.ability2 = true;
+    return input;
+  }
+
+  // Which ability button the player clicked, if any. The buttons are
+  // where the last frame drew them, which is where they are on the screen.
+  //
+  // The click is consumed whatever the answer is. A click that is left
+  // lying around would be picked up by the pause menu a moment later and
+  // press whatever happened to be under it.
+  takeAbilityClick() {
+    if (!this.input.wasMouseClicked()) return -1;
+    const buttons = this.hudButtons;
+    if (!buttons || !buttons.length) return -1;
+    const click = this.input.getClickPos();
+    for (let i = buttons.length - 1; i >= 0; i--) {
+      const b = buttons[i];
+      if (click.x >= b.x && click.x <= b.x + b.w &&
+          click.y >= b.y && click.y <= b.y + b.h) {
+        return b.index;
+      }
+    }
+    return -1;
   }
 
   // Announce a level-up without interrupting play: a short notice and a

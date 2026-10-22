@@ -88,18 +88,12 @@ class OnlineSession {
     if (this.game.noticeTimer > 0) this.game.noticeTimer -= deltaTime;
   }
 
-  // The local player's input, on its way to the server.
+  // The local player's input, on its way to the server. It is built the
+  // same way the local game builds it, so the input scheme works the same
+  // in a networked run.
   sendInput() {
     if (this.network.state !== 'open') return;
-    const movement = this.game.input.getMovement();
-    this.network.sendInput({
-      dx: movement.dx,
-      dy: movement.dy,
-      shoot: this.game.input.isKeyDown(' '),
-      ability1: this.game.input.isKeyPressed('1'),
-      ability2: this.game.input.isKeyPressed('2'),
-      aim: null
-    });
+    this.network.sendInput(this.game.localInput());
   }
 
   // The shared world is a fixed size. The client draws it scaled to fit

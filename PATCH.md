@@ -1,5 +1,97 @@
 # Patch History
 
+## 2026-10-23 - The Mouse And The Input Schemes
+
+### New
+- **`core/controls.js` - the input builder.** One place that turns the
+  keyboard and the mouse into the input object the simulation already
+  understood. It knows the three schemes, converts the pointer into world
+  coordinates and works out the aim angle.
+- **`scenes/ui.js` - the shared mouse plumbing.** A registry of clickable
+  rectangles, a helper that lays out a row of buttons, and the button
+  drawing itself.
+- **The mouse on every screen.** The main menu, the build select, the
+  wingman select, the settings, the lobby, the room, the pause menu and
+  the game over screen. Hovering selects an entry, clicking activates it.
+- **Three input schemes**, chosen in Settings and remembered between
+  sessions: *Keyboard Only*, *Keyboard + Mouse* and *Mouse + QER*.
+- **The ability panels are buttons.** Click one in the corner of the
+  screen and that ability fires.
+
+### Changed
+- `core/settings.js` - the three schemes, saved to `localStorage` under
+  `gameInputScheme` like the performance profile is.
+- `input.js` - the click position is kept, so a click is handled where
+  it happened rather than where the pointer ended up, and it comes from
+  the event itself rather than from the last move; a "the mouse moved"
+  flag so a screen can follow the pointer without the keyboard fighting
+  it; the right button is ignored and the browser's own context menu is
+  suppressed over the canvas. `getMouseDirection()` deleted - it was
+  dead code.
+- `core/game.js` - the local input goes through the new builder, and a
+  click on an ability panel in the HUD becomes that ability's input flag.
+- `core/renderer.js` - the crosshair, the line from the ship to the
+  pointer, and the ability panels are collected as they are drawn so the
+  mouse can find them.
+- `entities/player.js` - `drawCooldowns()` returns the rectangles it
+  drew.
+- `core/online-session.js` - the input that goes to the server is built
+  by the same code, so a networked run behaves like a local one.
+- `scenes/menu.js`, `scenes/settings.js`, `scenes/lobby.js`,
+  `scenes/pause.js`, `scenes/gameover.js` - each screen computes its
+  layout once and both draws it and hit-tests against it.
+
+### Fixed
+- **The mouse used to be tracked and thrown away.** The shots were
+  hardcoded straight up in `core/combat.js` and `input.getMouseDirection()`
+  was dead code. Both are gone.
+- **A button could drift from what it activated.** The hit test and the
+  drawing now come from the same layout, so they cannot disagree, and the
+  hit test is no longer a frame behind the drawing.
+- **A click in the game could press a button in the pause menu.** Click
+  and press `ESC` in the same frame and the pause menu opened on top of
+  the click that was still in flight, and pressed whatever was under the
+  pointer - quitting the run, without the player touching the mouse
+  again. The click belongs to the game, so the game takes it when it
+  pauses.
+- **A click landed on whatever the pointer was over, not on what was
+  pressed.** The screens matched the click against the item under the
+  pointer *now*. If the pointer drifted between the button going down
+  and the frame that handled it, the wrong thing was chosen. The click
+  is now matched against the position the click happened at, and the
+  press position comes from the event rather than from the last move.
+- **The settings screen and the lobby drew their buttons from
+  coordinates that were written out a second time.** The drawing and
+  the hit test now share one set of numbers, so they cannot disagree.
+
+### Notes
+- The scheme is chosen in Settings. The three performance profiles and the
+  three schemes are on the same screen, and a change is confirmed before
+  it is applied.
+- In the mouse schemes the ship steers towards the pointer: it eases into
+  it rather than snapping to it, and it stops when the pointer is on top
+  of the ship.
+- The pointer is in canvas coordinates and the shared world is drawn
+  scaled to fit the window, so the position is converted into world
+  coordinates before it is used.
+- The server needed no changes - it already applied the `aim` and the
+  `dx`/`dy` it was sent.
+
+### Verified
+- A new headless probe drives the real game with a real mouse: the
+  schemes are offered, the settings apply one and remember it, the mouse
+  aims the shot and the projectile travels at that angle, a click shoots,
+  the mouse moves the ship, `Q` and `E` fire the abilities, the HUD
+  ability buttons take a click, a click from the game does not press a
+  pause button, a click lands where the button went down, the pause and
+  game over buttons work, and nothing throws. **26 assertions, 26
+  passing.**
+- The existing suite is unchanged: 55 assertions, 55 passing. The mode
+  probe: 12, 12. The dualist probe: 8, 8. The AI probe: 42, 42. The
+  simulation probe: 4, 4. The online probe: 17, 17. The performance is
+  unchanged: 253.42 fills per frame against a baseline of 253.18, one
+  `requestAnimationFrame` callback per frame, no errors.
+
 ## 2026-10-23 - The Online Client
 
 ### New

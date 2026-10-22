@@ -300,9 +300,11 @@ class Player extends Entity {
     drawBuildVisual(ctx, this.buildName, center, this.width / 2, this.color);
   }
 
-  // Draw ability cooldowns
+  // Draw ability cooldowns. The rectangles are returned as well, so the
+  // mouse can find the buttons and fire the ability.
   drawCooldowns(ctx, x, y) {
     const abilities = this.build.abilities, keyLabels = ['[1]', '[2]'];
+    const buttons = [];
     abilities.forEach((ability, i) => {
       const cd = this.getCooldown(ability), yPos = y + i * 35;
       ctx.fillStyle = cd > 0 ? '#222' : '#1a3a1a';
@@ -326,6 +328,7 @@ class Player extends Entity {
         ctx.font = 'bold 10px monospace';
         ctx.fillText('READY', x + 5, yPos + 5);
       }
+      buttons.push({ x, y: yPos - 20, w: 140, h: 30, index: i });
     });
     if (this.cooldownReduction > 0) {
       ctx.fillStyle = this.color;
@@ -333,6 +336,7 @@ class Player extends Entity {
       ctx.textAlign = 'left';
       ctx.fillText(`AURA -${Math.round(this.cooldownReduction * 100)}% CD`, x + 5, y + 65);
     }
+    return buttons;
   }
 }
 

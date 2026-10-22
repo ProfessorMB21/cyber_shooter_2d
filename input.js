@@ -8,6 +8,14 @@ class InputHandler {
     this.mouseY = 0;
     this.mouseDown = false;
     this.mouseClicked = false;
+    // Where the pointer was when it was clicked. The pointer may well have
+    // moved on by the time the click is handled, so the position of the
+    // click itself is kept.
+    this.clickX = 0;
+    this.clickY = 0;
+    // Set whenever the pointer moves, and consumed by the screens so that
+    // a screen can follow the pointer without the keyboard fighting it.
+    this.mouseMoved = false;
     this.canvas = canvas;
 
     // Setup event listeners after a small delay to ensure canvas is in DOM
@@ -47,16 +55,33 @@ class InputHandler {
         const rect = this.canvas.getBoundingClientRect();
         this.mouseX = e.clientX - rect.left;
         this.mouseY = e.clientY - rect.top;
+        this.mouseMoved = true;
       });
 
-      this.canvas.addEventListener('mousedown', () => {
+      this.canvas.addEventListener('mousedown', (e) => {
+        // The right button is not used - the left one is the gun.
+        if (e.button !== undefined && e.button !== 0) return;
+        // The position comes from the event, not from the last move. A
+        // press that arrives without a move - the pointer coming back
+        // into the window, say - would otherwise be recorded at
+        // wherever the pointer was last seen.
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouseX = e.clientX - rect.left;
+        this.mouseY = e.clientY - rect.top;
         this.mouseDown = true;
         this.mouseClicked = true;
+        this.clickX = this.mouseX;
+        this.clickY = this.mouseY;
       });
 
-      this.canvas.addEventListener('mouseup', () => {
+      this.canvas.addEventListener('mouseup', (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
         this.mouseDown = false;
       });
+
+      // The right button would otherwise open the browser's own menu over
+      // the game.
+      this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     }
   }
 
@@ -103,23 +128,22 @@ class InputHandler {
     return false;
   }
 
+  // True once after the pointer has moved. A screen uses it to follow the
+  // pointer with its selection, so the two do not fight over it.
+  consumeMouseMove() {
+    if (!this.mouseMoved) return false;
+    this.mouseMoved = false;
+    return true;
+  }
+
   // Get mouse position
   getMousePos() {
     return { x: this.mouseX, y: this.mouseY };
   }
 
-  // Get mouse position as normalized vector from center
-  getMouseDirection(centerX, centerY) {
-    const dx = this.mouseX - centerX;
-    const dy = this.mouseY - centerY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    if (distance === 0) return { x: 0, y: -1 };
-
-    return {
-      x: dx / distance,
-      y: dy / distance
-    };
+  // Where the pointer was when it was clicked
+  getClickPos() {
+    return { x: this.clickX, y: this.clickY };
   }
 
   // Clear all input state
@@ -127,6 +151,7 @@ class InputHandler {
     this.keys = {};
     this.keysPressed = {};
     this.mouseClicked = false;
+    this.mouseMoved = false;
   }
 }
 
