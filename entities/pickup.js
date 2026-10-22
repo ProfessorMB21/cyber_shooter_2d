@@ -1,5 +1,6 @@
 // Pickup Entity
 
+import { nearestTo } from '../systems/entity.js';
 import { PICKUPS } from '../config/index.js';
 
 class Pickup {
@@ -18,15 +19,26 @@ class Pickup {
     this.color = pickupConfig.color;
   }
 
-  update(deltaTime, player) {
+  // `players` is the list of players in the run, or a single player. The
+  // pickup is drawn to the nearest one and is collected by whoever gets
+  // there first.
+  getCenter() {
+    return { x: this.x + this.width / 2, y: this.y + this.height / 2 };
+  }
+
+  update(deltaTime, players) {
     this.bob += deltaTime * 5;
 
+    const player = nearestTo(this.x, this.y, players);
+    if (!player) return !this.dead;
+
     // Float towards player if close
-    const dx = player.getCenter().x - this.x;
-    const dy = player.getCenter().y - this.y;
+    const playerCenter = player.getCenter();
+    const dx = playerCenter.x - this.x;
+    const dy = playerCenter.y - this.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    if (distance < 100) {
+    if (distance < 100 && distance > 0) {
       this.x += (dx / distance) * 100 * deltaTime;
       this.y += (dy / distance) * 100 * deltaTime;
     }

@@ -31,22 +31,23 @@ class RenderingSystem {
 
     // Draw pickups (with culling)
     this.game.pickups.forEach(p => {
-      if (p.x > -50 && p.x < this.game.width + 50 && p.y > -50 && p.y < this.game.height + 50) {
+      if (p.x > -50 && p.x < this.game.worldWidth + 50 && p.y > -50 && p.y < this.game.worldHeight + 50) {
         p.draw(ctx);
         counts.pickups++;
       }
     });
 
-    // Draw player
-    if (this.game.player) {
-      this.game.player.draw(ctx);
+    // Draw the players. There is one of them in a single player run, two in
+    // dualist, and up to five online.
+    for (const player of this.game.players) {
+      player.draw(ctx);
     }
 
     // Draw enemies (with quality-based culling)
     if (settings.getSetting('entityCulling')) {
       // Performance/Balanced: culling enabled
       this.game.enemies.forEach(e => {
-        if (e.x > -100 && e.x < this.game.width + 100 && e.y > -100 && e.y < this.game.height + 100) {
+        if (e.x > -100 && e.x < this.game.worldWidth + 100 && e.y > -100 && e.y < this.game.worldHeight + 100) {
           e.draw(ctx);
           counts.enemies++;
         }
@@ -68,7 +69,7 @@ class RenderingSystem {
     // Draw projectiles (with culling)
     if (settings.getSetting('entityCulling')) {
       this.game.projectiles.forEach(p => {
-        if (p.x > -50 && p.x < this.game.width + 50 && p.y > -50 && p.y < this.game.height + 50) {
+        if (p.x > -50 && p.x < this.game.worldWidth + 50 && p.y > -50 && p.y < this.game.worldHeight + 50) {
           p.draw(ctx);
           counts.projectiles++;
         }

@@ -1,6 +1,6 @@
 // Enemy Entity
 
-import { Entity } from '../systems/entity.js';
+import { Entity, nearestTo } from '../systems/entity.js';
 import { ENEMY_TYPES } from '../config/index.js';
 
 // Shooter AI: the distance at which shooters start backing off, and how much
@@ -38,7 +38,10 @@ class Enemy extends Entity {
     this.hitFlash = 0;
   }
 
-  update(deltaTime, player, canvasWidth, canvasHeight) {
+  // `targets` is the list of players in the run, or a single player. The
+  // enemy goes after the nearest one, which is what makes a shared world
+  // work: whoever is closest is the one being chased.
+  update(deltaTime, targets, canvasWidth, canvasHeight) {
     if (this.dead) return false;
 
     this.pulse += deltaTime * 5;
@@ -46,6 +49,9 @@ class Enemy extends Entity {
 
     // Calculate direction to player
     const center = this.getCenter();
+    const player = nearestTo(center.x, center.y, targets);
+    if (!player) return true;
+
     const playerCenter = player.getCenter ? player.getCenter() : { x: player.x, y: player.y };
 
     const dx = playerCenter.x - center.x;

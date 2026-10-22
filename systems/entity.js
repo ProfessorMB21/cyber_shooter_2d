@@ -1,5 +1,28 @@
 // Base Entity Class
 
+// The candidate closest to a point. Accepts a single candidate as well as
+// a list, so the single-player code paths do not have to care which they
+// were handed. Dead candidates are ignored - a player who is out of the run
+// is not a target.
+function nearestTo(x, y, candidates) {
+  if (!candidates) return null;
+  const list = Array.isArray(candidates) ? candidates : [candidates];
+  let nearest = null;
+  let nearestDistance = Infinity;
+  for (const candidate of list) {
+    if (!candidate || candidate.dead) continue;
+    const center = candidate.getCenter ? candidate.getCenter() : candidate;
+    const dx = center.x - x;
+    const dy = center.y - y;
+    const distance = dx * dx + dy * dy;
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearest = candidate;
+    }
+  }
+  return nearest;
+}
+
 class Entity {
   constructor(options = {}) {
     this.x = options.x || 0;
@@ -180,4 +203,4 @@ class Entity {
   }
 }
 
-export { Entity };
+export { Entity, nearestTo };

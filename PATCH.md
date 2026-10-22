@@ -1,5 +1,57 @@
 # Patch History
 
+## 2026-10-23 - Simulation / Presentation Split
+
+### New
+- **`core/simulation.js` - the world with no rendering.** A new
+  `Simulation` class holds the players, the enemies, the bosses, the
+  projectiles and the pickups, and advances them from a set of inputs. It
+  knows nothing about canvas, the keyboard or the scenes.
+- **`Game extends Simulation`.** `core/game.js` is now that simulation plus
+  a canvas, an input handler and the screens. A single player run behaves
+  exactly as it did.
+- **A frozen input contract** for every player, human or AI:
+  `{ dx, dy, shoot, ability1, ability2, aim }`. `Simulation.update()` takes
+  a map from player id to that object; a player with no input gets
+  `EMPTY_INPUT`.
+- **`nearestTo(x, y, candidates)`** in `systems/entity.js`. It accepts a
+  single entity or a list and skips the dead ones, so enemies, bosses,
+  pickups and enemy projectiles all target the nearest *living* player.
+- **`package.json`** with `"type": "module"` and no dependencies, so Node
+  can import the game's ES modules. No build step, no bundler, no lockfile.
+
+### Why
+A networked run has to be simulated in exactly one place, or the clients
+drift apart within a second or two. The server has to run the *same*
+physics, combat, collision, spawning and scoring code the browser runs, and
+the only way to guarantee that is to run the same module.
+
+### Changed
+- `core/combat.js` - `playerShoot(player, aim)` takes an optional angle.
+  The local player passes `null` and shoots straight up as before; the AI
+  passes a real angle. The local player's bullets stay yellow, everyone
+  else's take their build colour.
+- `core/collision.js` - enemy projectiles hit the nearest living player.
+- `core/events.js` - XP and score are shared across the living players, and
+  the level penalty comes from their *average* level, so a solo run is
+  numerically identical to the one it replaced.
+- `core/renderer.js` - draws every player in `game.players`; culls
+  projectiles and pickups against the world size.
+- `core/spawning.js` - spawns against the world size.
+- `entities/player.js` - the input may be a plain object, not just an
+  `InputHandler`.
+- `entities/enemy.js`, `entities/boss.js`, `entities/pickup.js` - target the
+  nearest living player.
+
+### Verified
+- The headless suite: **55 assertions, 55 passing** - unchanged.
+- The performance harness: 253.94 canvas fills per frame (baseline
+  252.81-253.6), one `requestAnimationFrame` callback per frame, 0 errors.
+- A DOM-free probe imports `core/simulation.js` into plain Node, runs 120
+  steps with two players (a fighter and a guardian), and checks that the
+  world advances, both players survive and the grunts take damage from the
+  players' shots. 4 assertions, 4 passing.
+
 ## 2026-10-22 - The Guardian's Cooldown Aura
 
 ### New

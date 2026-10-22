@@ -1,29 +1,26 @@
 // Main Game Engine - Core Game Class
+//
+// The Game class is the Simulation with a canvas, an input handler and the
+// scenes attached. Everything that is about *drawing* or about *reading the
+// keyboard* lives here; everything that is about the world itself lives in
+// core/simulation.js, which the multiplayer server runs on its own.
 
 import { InputHandler } from '../input.js';
-import { ParticleSystem } from '../systems/particles.js';
-import { Player, BUILDS } from '../entities/player.js';
-import { Enemy } from '../entities/enemy.js';
-import { Boss } from '../entities/boss.js';
-import { Pickup } from '../entities/pickup.js';
-import { DIFFICULTIES } from '../config/index.js';
+import { BUILDS } from '../entities/player.js';
 import { MenuScene, GameOverScene, PauseScene, SettingsScene, SceneManager } from '../scenes/index.js';
-import { CombatSystem } from './combat.js';
-import { SpawningSystem } from './spawning.js';
-import { EventSystem } from './events.js';
+import { Simulation } from './simulation.js';
 import { RenderingSystem } from './renderer.js';
 import { VisualEffectsSystem } from './visual-effects.js';
-import { CollisionSystem } from './collision.js';
 import { PerformanceMonitor } from './performance.js';
 import { GameSettings } from './settings.js';
 import { DebugOverlay } from './debug-overlay.js';
 
-class Game {
+class Game extends Simulation {
   constructor(canvas) {
+    super({ width: canvas.width, height: canvas.height });
+
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.width = canvas.width;
-    this.height = canvas.height;
 
     // Game settings
     this.settings = new GameSettings();
@@ -37,16 +34,9 @@ class Game {
     // Input
     this.input = new InputHandler(canvas);
 
-    // Particles
-    this.particles = new ParticleSystem(this.width, this.height);
-
-    // Core systems
-    this.combat = new CombatSystem(this);
-    this.spawning = new SpawningSystem(this);
-    this.events = new EventSystem(this);
+    // Rendering and effects
     this.renderer = new RenderingSystem(this);
     this.visuals = new VisualEffectsSystem(this);
-    this.collision = new CollisionSystem(this);
 
     // Game state
     this.state = 'menu';
@@ -54,45 +44,22 @@ class Game {
     this.difficultySelection = 1;
     this.difficulties = ['easy', 'normal', 'hard', 'nightmare'];
 
-    // Game data
-    this.player = null;
-    // Every player entity in the run. The guardian's aura reaches the
-    // other players in this list, so it is kept separate from
-    // `this.player`, which is the one the local player controls.
-    this.players = [];
-    this.enemies = [];
-    this.bosses = [];
-    this.projectiles = [];
-    this.pickups = [];
-
-    // Projectile culling bounds, derived from the canvas size
-    this.worldBounds = { minX: -100, maxX: this.width + 100, minY: -100, maxY: this.height + 100 };
-    this.updateWorldBounds();
+    // The wingman in dualist mode
+    this.ally = null;
+    // The options the current run was started with, so a restart can repeat
+    // them
+    this.runOptions = { mode: 'single' };
 
     // Level tracked at the start of the frame, to detect level-ups
     this.levelAtFrameStart = 1;
+    // The same for the other players in the run
+    this.allyLevels = new Map();
     // Level-up notice - shown briefly, without interrupting play
     this.levelUpNotice = null;
     this.levelUpNoticeTimer = 0;
 
     // Timing
     this.lastTime = performance.now();
-    this.gameTime = 0;
-    this.wave = 1;
-
-    // Spawning
-    this.spawnTimer = 0;
-    this.spawnInterval = 2;
-    this.bossSpawned = [];
-
-    // Score
-    this.score = 0;
-    this.combo = 0;
-    this.comboTimer = 0;
-    this.kills = 0;
-
-    // Difficulty
-    this.difficulty = this.difficulties[this.difficultySelection];
 
     // Build names
     this.buildNames = Object.keys(BUILDS);
@@ -115,30 +82,42 @@ class Game {
   updateStars(deltaTime) { this.visuals.updateStars(deltaTime); }
   drawBackground(ctx) { this.visuals.drawBackground(ctx); }
 
-  start(buildName, difficulty) {
+  // Start a run. `options` carries the game mode and whatever it needs:
+  // the wingman's build in dualist, the room to join online.
+  start(buildName, difficulty, options = {}) {
     this.difficulty = difficulty || 'normal';
-    const mult = DIFFICULTIES[this.difficulty];
+    this.mode = options.mode || 'single';
+    this.runOptions = { ...options, mode: this.mode };
 
-    this.player = new Player(buildName, this.width / 2, this.height - 100);
-    this.players = [this.player];
+    this.clearRunState();
+
+    const halfWidth = this.worldWidth / 2;
+    this.player = this.addPlayer({
+      playerId: options.playerId || 'local',
+      buildName,
+      x: halfWidth,
+      y: this.worldHeight - 100,
+      playerName: options.playerName || 'YOU'
+    });
+
+    // The AI wingman. It is a full player - it takes damage, levels up and
+    // picks things up - it is just driven by the AI instead of a keyboard.
+    if (this.mode === 'dualist' && options.allyBuild) {
+      this.ally = this.addPlayer({
+        playerId: 'ally',
+        buildName: options.allyBuild,
+        x: halfWidth - 90,
+        y: this.worldHeight - 60,
+        playerName: 'WINGMAN',
+        isAI: true
+      });
+    }
 
     // Make game instance available to player for quality settings
     window.gameInstance = this;
 
-    this.enemies = [];
-    this.bosses = [];
-    this.projectiles = [];
-    this.pickups = [];
-    this.particles.clear();
-
-    this.gameTime = 0;
-    this.wave = 1;
-    this.score = 0;
-    this.combo = 0;
-    this.kills = 0;
-    this.bossSpawned = [];
-    this.spawnTimer = 0;
     this.levelAtFrameStart = this.player.level;
+    this.allyLevels.clear();
 
     this.state = 'playing';
     this.lastTime = performance.now();
@@ -161,37 +140,15 @@ class Game {
 
   // Reset everything that belongs to a single run
   clearRunState() {
-    this.player = null;
-    this.players = [];
-    this.enemies = [];
-    this.bosses = [];
-    this.projectiles = [];
-    this.pickups = [];
-    this.particles.clear();
-    this.gameTime = 0;
-    this.wave = 1;
-    this.score = 0;
-    this.combo = 0;
-    this.comboTimer = 0;
-    this.kills = 0;
-    this.bossSpawned = [];
-    this.spawnTimer = 0;
+    super.clearRunState();
+    this.ally = null;
     this.levelAtFrameStart = 1;
+    this.allyLevels.clear();
     this.levelUpNotice = null;
     this.levelUpNoticeTimer = 0;
     this.visuals.shakeAmount = 0;
     this.visuals.cameraX = 0;
     this.visuals.cameraY = 0;
-  }
-
-  // Projectiles are culled against the canvas, which is window-sized
-  updateWorldBounds() {
-    this.worldBounds = {
-      minX: -100,
-      maxX: this.width + 100,
-      minY: -100,
-      maxY: this.height + 100
-    };
   }
 
   switchState(newState) {
@@ -221,8 +178,8 @@ class Game {
   }
 
   // Delegate methods to core systems
-  playerShoot() { return this.combat.playerShoot(); }
-  activateSkill(slot) { return this.combat.activateSkill(slot); }
+  playerShoot(player, aim) { return this.combat.playerShoot(player, aim); }
+  activateSkill(slot, player, input) { return this.combat.activateSkill(slot, player, input); }
   enemyShoot(enemy, target) { return this.combat.enemyShoot(enemy, target); }
   spawnEnemies() { return this.spawning.spawnEnemies(); }
   spawnBoss(index) { return this.spawning.spawnBoss(index); }
@@ -267,7 +224,7 @@ class Game {
           } else if (result.action === 'restart') {
             // Start a fresh run with the same build and difficulty
             const build = this.player ? this.player.buildName : this.buildNames[0];
-            this.start(build, this.difficulty);
+            this.start(build, this.difficulty, this.runOptions);
             this.render();
             this.debug.render(this.ctx);
             return;
@@ -294,7 +251,7 @@ class Game {
               menu.buildSelection = Math.max(0, menu.buildNames.indexOf(result.build));
               menu.difficultySelection = Math.max(0, menu.difficulties.indexOf(result.difficulty));
             }
-            this.start(result.build, result.difficulty);
+            this.start(result.build, result.difficulty, result.options || {});
             return;
           } else if (result.action === 'show_builds') {
             this.state = 'menu';
@@ -347,77 +304,72 @@ class Game {
   }
 
   update(deltaTime) {
-    this.gameTime += deltaTime;
-    this.comboTimer -= deltaTime;
-    if (this.comboTimer <= 0) this.combo = 0;
-
     this.updateShake(deltaTime);
     this.updateStars(deltaTime);
 
-    this.player.update(deltaTime, this.input, this.width, this.height);
+    super.update(deltaTime, this.buildInputs(deltaTime));
 
-    // Recompute the cooldown reduction after the player has moved, so the
-    // guardian's aura follows whoever is standing next to it.
-    for (const p of this.players) p.updateCooldownAura(this.players);
-
-    if (this.input.isKeyDown(' ') && this.player.shootCooldown <= 0) {
-      this.playerShoot();
-    }
-
-    if (this.input.isKeyPressed('1')) this.activateSkill(0);
-    if (this.input.isKeyPressed('2')) this.activateSkill(1);
-
-    this.projectiles = this.projectiles.filter(p => {
-      const alive = p.update(deltaTime);
-      if (alive) this.collision.checkProjectileCollisions(p, deltaTime);
-      return alive;
-    });
-
-    this.enemies = this.enemies.filter(e => {
-      const result = e.update(deltaTime, this.player, this.width, this.height);
-      if (result?.action === 'shoot') this.enemyShoot(e, result.target);
-      return !e.dead;
-    });
-
-    this.bosses = this.bosses.filter(b => {
-      const result = b.update(deltaTime, this.player, this.width, this.height);
-      if (result?.action === 'attack') this.collision.handleBossAttack(b);
-      return !b.dead;
-    });
-
-    this.pickups = this.pickups.filter(p => p.update(deltaTime, this.player));
-    this.particles.update(deltaTime);
-
-    this.spawnTimer -= deltaTime;
-    if (this.spawnTimer <= 0) {
-      this.spawnEnemies();
-      this.spawnTimer = Math.max(0.5, this.spawnInterval - this.gameTime * 0.01);
-    }
-
-    this.spawning.checkBossSpawning();
-    this.spawning.spawnRandomPickups();
-
-    if (this.player.dead) this.switchState('gameover');
-
-    // Player.addXP() already applies level-ups, so compare levels rather than
-    // re-checking the XP threshold - that would level the player up twice.
-    if (this.player.level !== this.levelAtFrameStart) {
-      this.levelAtFrameStart = this.player.level;
-      this.announceLevelUp();
-    }
+    this.announceLevelUps();
 
     if (this.levelUpNoticeTimer > 0) this.levelUpNoticeTimer -= deltaTime;
+
+    if (this.player && this.player.dead) this.switchState('gameover');
+  }
+
+  // The input for the local player, for this frame.
+  buildInputs(deltaTime = 1 / 60) {
+    const inputs = new Map();
+    for (const player of this.players) {
+      if (player !== this.player) continue;
+      const movement = this.input.getMovement();
+      inputs.set(player.playerId, {
+        dx: movement.dx,
+        dy: movement.dy,
+        shoot: this.input.isKeyDown(' '),
+        ability1: this.input.isKeyPressed('1'),
+        ability2: this.input.isKeyPressed('2'),
+        aim: null
+      });
+    }
+    return inputs;
   }
 
   // Announce a level-up without interrupting play: a short notice and a
   // burst of particles, but no overlay and no pause.
-  announceLevelUp() {
-    this.levelUpNotice = `LEVEL UP - LEVEL ${this.player.level}`;
+  announceLevelUps() {
+    for (const player of this.players) {
+      const previous = player === this.player
+        ? this.levelAtFrameStart
+        : (this.allyLevels.get(player.playerId) ?? player.level);
+      if (player.level === previous) continue;
+      if (player === this.player) {
+        this.levelAtFrameStart = player.level;
+        this.announceLevelUp(player);
+      } else {
+        this.allyLevels.set(player.playerId, player.level);
+        this.announceAllyLevelUp(player);
+      }
+    }
+  }
+
+  announceLevelUp(player = this.player) {
+    this.levelUpNotice = `LEVEL UP - LEVEL ${player.level}`;
     this.levelUpNoticeTimer = 1.8;
-    const center = this.player.getCenter();
+    const center = player.getCenter();
     this.particles.spawnExplosion(center.x, center.y, 18, '#0f0');
     this.particles.spawnText('LEVEL UP', center.x, center.y - 40, '#0f0');
   }
+
+  // A wingman level up gets a quieter notice - it must not cover the
+  // screen the way the local player's does.
+  announceAllyLevelUp(player) {
+    const center = player.getCenter();
+    this.particles.spawnExplosion(center.x, center.y, 10, '#0ff');
+    this.particles.spawnText(`${player.playerName} LV${player.level}`, center.x, center.y - 30, '#0ff');
+  }
 }
 
+// The AI needs the frame time to decide how long to commit to a decision.
+// It is passed through the controller rather than stored on the game, so
+// that a controller can be driven from a test without a frame loop.
 export { Game };

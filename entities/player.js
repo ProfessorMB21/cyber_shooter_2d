@@ -12,6 +12,13 @@ class Player extends Entity {
     super({ x, y, width: 30, height: 30, color: build.color, name: build.name, hp: build.stats.hp, maxHp: build.stats.maxHp, damage: build.stats.damage, speed: build.stats.speed * SPEED_SCALE_FACTOR, armor: build.stats.armor });
     this.buildName = buildName;
     this.build = build;
+    // The id identifies the player across the network, and the name is what
+    // the roster shows. Both are filled in by whoever creates the player.
+    this.playerId = null;
+    this.playerName = build.name;
+    this.isAI = false;
+    this.score = 0;
+    this.kills = 0;
     this.level = 1;
     this.xp = 0;
     this.xpToNextLevel = 100;
@@ -190,9 +197,11 @@ class Player extends Entity {
     let effectiveSpeed = this.currentStats.speed;
     if (this.speedBoostActive) effectiveSpeed *= 1.5;
     if (input) {
-      const movement = input.getMovement();
-      this.vx += movement.dx * effectiveSpeed * deltaTime * 60;
-      this.vy += movement.dy * effectiveSpeed * deltaTime * 60;
+      // The input is either a live input handler or a plain { dx, dy } pair
+      // built by the AI or received over the network.
+      const movement = typeof input.getMovement === 'function' ? input.getMovement() : input;
+      this.vx += (movement.dx || 0) * effectiveSpeed * deltaTime * 60;
+      this.vy += (movement.dy || 0) * effectiveSpeed * deltaTime * 60;
     }
     this.x += this.vx * deltaTime;
     this.y += this.vy * deltaTime;

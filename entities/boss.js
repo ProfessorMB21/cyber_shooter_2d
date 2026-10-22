@@ -1,5 +1,6 @@
 // Boss Entity with Attack Patterns
 
+import { nearestTo } from '../systems/entity.js';
 import { Enemy } from './enemy.js';
 import { BOSS_PATTERNS } from '../config/bosses.js';
 import { BossPatternGenerator } from './boss-patterns.js';
@@ -34,8 +35,11 @@ class Boss extends Enemy {
     this.moveTimer = 0;
   }
 
-  update(deltaTime, player, canvasWidth, canvasHeight) {
+  // `targets` is the list of players in the run, or a single player. The
+  // boss goes after the nearest one.
+  update(deltaTime, targets, canvasWidth, canvasHeight) {
     if (this.dead) return false;
+    const player = nearestTo(this.x, this.y, targets);
     if (this.phase === 1 && this.hp <= this.maxHp * this.phaseThreshold) {
       this.phase = 2;
       this.damage *= 1.3;
@@ -46,10 +50,10 @@ class Boss extends Enemy {
     this.moveTimer -= deltaTime;
     if (this.moveTimer <= 0) {
       this.moveTimer = 3;
-      if (this.pattern === 'crush') {
+      if (this.pattern === 'crush' && player) {
         this.targetX = player.x;
         this.targetY = player.y;
-      } else {
+      } else if (this.pattern !== 'crush') {
         this.targetX = Math.random() * (canvasWidth - 200) + 100;
         this.targetY = Math.random() * (canvasHeight * 0.4) + 50;
       }
@@ -69,9 +73,11 @@ class Boss extends Enemy {
       return { action: 'attack', pattern: this.pattern, boss: this };
     }
     const center = this.getCenter();
-    const playerCenter = player.getCenter ? player.getCenter() : { x: player.x, y: player.y };
-    const dist = Math.hypot(center.x - playerCenter.x, center.y - playerCenter.y);
-    if (dist < 50) player.takeDamage(this.damage * deltaTime * 2);
+    if (player) {
+      const playerCenter = player.getCenter ? player.getCenter() : { x: player.x, y: player.y };
+      const dist = Math.hypot(center.x - playerCenter.x, center.y - playerCenter.y);
+      if (dist < 50) player.takeDamage(this.damage * deltaTime * 2);
+    }
     return true;
   }
 

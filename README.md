@@ -195,9 +195,11 @@ main.js               Bootstrap: creates the canvas, wires up resize, starts the
 game.js               Re-export shim for core/game.js
 index.js              Legacy shim
 entities.js           Legacy re-export shim
+package.json          "type": "module" so Node can import the game's modules
 
 core/
-  game.js             The Game class: state machine, update loop, scene dispatch
+  simulation.js       The world with no rendering: players, enemies, pickups, update
+  game.js             The Game class: the Simulation plus a canvas, input and scenes
   combat.js           Player shooting, enemy shooting, ability activation
   collision.js        Projectile/enemy/pickup collision tests
   spawning.js         Enemy, boss and pickup spawning
@@ -255,6 +257,13 @@ running game. They are candidates for deletion.
 - **The loop**: `Game` owns the `requestAnimationFrame` chain exclusively.
   Nothing else may schedule it - two chains make the chain grow by one every
   frame and the scene gets drawn hundreds of times per frame.
+- **Simulation and presentation are separate.** `core/simulation.js` holds
+  the world - players, enemies, pickups, the update logic - and knows nothing
+  about canvas, the keyboard or the scenes. `core/game.js` is that
+  simulation plus a canvas, an input handler and the screens. The split is
+  what lets the same world code run on a server with no DOM at all, which is
+  what a networked run needs: the world has to be simulated in exactly one
+  place, or the clients drift apart.
 - **Audio**: none. Not implemented.
 - **Mouse**: tracked but unused. Shots travel straight up; aiming is
   keyboard-only.

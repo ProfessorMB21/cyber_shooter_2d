@@ -2,6 +2,90 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Simulation / Presentation Split (2026-10-23)
+
+### The feature
+The game world has been lifted out of the canvas. `core/simulation.js` is a
+new, DOM-free `Simulation` class that holds the players, the enemies, the
+bosses, the projectiles and the pickups, and advances them from a set of
+inputs. `core/game.js` now *is* that simulation - `Game extends Simulation` -
+with a canvas, an input handler and the screens attached on top.
+
+Nothing about the game changed for the player: a single player run behaves
+exactly as it did. What changed is that the world can now be run by
+something that has no screen.
+
+### Why
+A networked run has to be simulated in exactly one place. If every client
+simulated its own copy of the world, they would drift apart within a second
+or two - two enemies killed by two different clients, a boss dead on one
+screen and alive on the next. The server needs to run the *same* physics,
+combat, collision, spawning and scoring code the browser runs, and the only
+way to guarantee that is to run the same module.
+
+The split is therefore the prerequisite for multiplayer, not a refactor for
+its own sake.
+
+### The input contract
+Every player - human, AI or remote - is driven by the same frozen input
+object:
+
+```js
+{ dx, dy, shoot, ability1, ability2, aim }
+```
+
+`Simulation.update(deltaTime, inputs)` takes a map from player id to that
+object. The local player builds one from the keyboard, the AI builds one
+from what it can see, and the server builds one from what a client sent over
+the wire. A player with no input for this frame gets `EMPTY_INPUT` - no
+movement, no shooting.
+
+### What else changed
+- **`nearestTo(x, y, candidates)`** in `systems/entity.js` is now how
+  everything picks a target. It accepts a single entity or a list and skips
+  the dead ones, so enemies, bosses, pickups and enemy projectiles all
+  target the nearest *living* player. In a solo run that is the same player
+  as before.
+- **`combat.playerShoot(player, aim)`** takes an optional angle. The local
+  player passes `null` and shoots straight up exactly as before; the AI
+  passes a real angle. The local player's bullets stay yellow; everyone
+  else's take their build colour.
+- **XP and score are shared.** A kill grants XP and score to every living
+  player. The level penalty is derived from the *average* level of the
+  living players, so with one player the numbers are identical to the
+  single player run they replaced.
+- **The renderer draws every player** in `game.players`, and culls
+  projectiles and pickups against the world size rather than the canvas size.
+- **`package.json`** is new, with `"type": "module"` and no dependencies.
+  It is what lets Node import the game's ES modules for the server; without
+  it Node would treat them as CommonJS and the import would fail. There is
+  still no build step, no bundler and no lockfile.
+- **The Simulation is verified without a DOM.** A probe imports
+  `core/simulation.js` into plain Node, runs 120 steps with two players
+  (a fighter and a guardian) and checks that the world advances, both
+  players survive and the grunts take damage from the players' shots.
+
+### Files Modified
+- `core/simulation.js` - new: the DOM-free world, `EMPTY_INPUT`,
+  `NullParticles`
+- `core/game.js` - `Game extends Simulation`; the canvas, input, scenes and
+  level-up notice stay here
+- `core/combat.js` - `playerShoot` takes an aim angle
+- `core/collision.js` - enemy projectiles hit the nearest living player
+- `core/events.js` - shared XP and score, penalty from the average level
+- `core/spawning.js`, `core/renderer.js` - world size instead of canvas size
+- `entities/player.js` - the input may be a plain object
+- `entities/enemy.js`, `entities/boss.js`, `entities/pickup.js` - target the
+  nearest living player
+- `systems/entity.js` - `nearestTo()`
+- `package.json` - new
+
+### Verified
+The headless suite is at 55 assertions, 55 passing - unchanged from before
+the split. The performance harness is unchanged too: 253.94 canvas fills per
+frame (baseline 252.81-253.6), one `requestAnimationFrame` callback per
+frame, 0 errors.
+
 ## The Guardian's Cooldown Aura (2026-10-22)
 
 ### The feature

@@ -1,5 +1,6 @@
 // Collision System
 
+import { nearestTo } from '../systems/entity.js';
 import { Projectile } from '../entities/projectile.js';
 
 class CollisionSystem {
@@ -56,26 +57,35 @@ class CollisionSystem {
   }
 
   checkEnemyProjectileCollisions(p, deltaTime) {
-    const player = this.game.player;
-    // No player means no run in progress (e.g. after quitting to the menu)
-    if (!player) return;
-    const dx = p.x - (player.x + player.width / 2);
-    const dy = p.y - (player.y + player.height / 2);
-    const radius = p.size + 15;
-    if (dx * dx + dy * dy < radius * radius) {
-      if (p.aoe) {
-        player.takeDamage(p.damage * deltaTime * 5);
-        this.game.addShake(1.5);
-      } else {
-        player.takeDamage(p.damage);
-        this.game.addShake(1);
-        p.dead = true;
+    const players = this.game.players;
+    // No players means no run in progress (e.g. after quitting to the menu)
+    if (!players || players.length === 0) return;
+
+    // A shot can hit any of the players in the run. It stops at the first
+    // one it reaches, so it cannot damage two of them at once.
+    for (const player of players) {
+      if (player.dead) continue;
+      const dx = p.x - (player.x + player.width / 2);
+      const dy = p.y - (player.y + player.height / 2);
+      const radius = p.size + 15;
+      if (dx * dx + dy * dy < radius * radius) {
+        if (p.aoe) {
+          player.takeDamage(p.damage * deltaTime * 5);
+          this.game.addShake(1.5);
+        } else {
+          player.takeDamage(p.damage);
+          this.game.addShake(1);
+          p.dead = true;
+        }
+        break;
       }
     }
   }
 
   handleBossAttack(b) {
-    const projectiles = b.getProjectiles(this.game.player);
+    // The boss aims at whoever is closest.
+    const target = nearestTo(b.x, b.y, this.game.players) || this.game.player;
+    const projectiles = b.getProjectiles(target);
     projectiles.forEach(p => {
       this.game.projectiles.push(new Projectile(
         p.x, p.y, p.vx, p.vy, p.damage, p.color, false,
