@@ -57,6 +57,8 @@ class CollisionSystem {
 
   checkEnemyProjectileCollisions(p, deltaTime) {
     const player = this.game.player;
+    // No player means no run in progress (e.g. after quitting to the menu)
+    if (!player) return;
     const dx = p.x - (player.x + player.width / 2);
     const dy = p.y - (player.y + player.height / 2);
     const radius = p.size + 15;

@@ -12,6 +12,9 @@ class PauseScene {
     if (input.isKeyPressed('r')) {
       return { action: 'restart' };
     }
+    if (input.isKeyPressed('q')) {
+      return { action: 'quit' };
+    }
     return null;
   }
 
@@ -25,7 +28,7 @@ class PauseScene {
 
     // Pause menu container
     const menuWidth = 400;
-    const menuHeight = 250;
+    const menuHeight = 290;
     const menuX = (width - menuWidth) / 2;
     const menuY = (height - menuHeight) / 2;
 
@@ -55,7 +58,9 @@ class PauseScene {
     ctx.fillStyle = '#888';
     ctx.font = '14px monospace';
     ctx.fillText('Press ESC or P to Resume', width / 2, menuY + 185);
-    ctx.fillText('Press R to Restart', width / 2, menuY + 210);
+    ctx.fillText('Press R to Restart Run', width / 2, menuY + 210);
+    ctx.fillStyle = '#f66';
+    ctx.fillText('Press Q to Quit to Main Menu', width / 2, menuY + 240);
   }
 }
 

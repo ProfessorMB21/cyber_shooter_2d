@@ -67,6 +67,7 @@ class Game {
 
     // Level tracked at the start of the frame, to detect level-ups
     this.levelAtFrameStart = 1;
+    this.levelUpTimer = null;
 
     // Timing
     this.lastTime = performance.now();
@@ -136,7 +137,44 @@ class Game {
 
     this.state = 'playing';
     this.lastTime = performance.now();
+    // A pending level-up timer from a previous run must not fire into this one
+    clearTimeout(this.levelUpTimer);
     // NOTE: the animation loop is already running - do NOT schedule it again
+  }
+
+  // Abandon the current run and return to the main menu. The Game instance
+  // and the animation loop stay alive - only the run state is cleared, so the
+  // app never has to be restarted.
+  quitToMenu() {
+    this.state = 'menu';
+    this.sceneManager.switchTo('menu');
+    if (this.sceneManager.currentScene) {
+      this.sceneManager.currentScene.menuState = 'main';
+    }
+    this.clearRunState();
+  }
+
+  // Reset everything that belongs to a single run
+  clearRunState() {
+    clearTimeout(this.levelUpTimer);
+    this.player = null;
+    this.enemies = [];
+    this.bosses = [];
+    this.projectiles = [];
+    this.pickups = [];
+    this.particles.clear();
+    this.gameTime = 0;
+    this.wave = 1;
+    this.score = 0;
+    this.combo = 0;
+    this.comboTimer = 0;
+    this.kills = 0;
+    this.bossSpawned = [];
+    this.spawnTimer = 0;
+    this.levelAtFrameStart = 1;
+    this.visuals.shakeAmount = 0;
+    this.visuals.cameraX = 0;
+    this.visuals.cameraY = 0;
   }
 
   // Projectiles are culled against the canvas, which is window-sized
@@ -164,6 +202,15 @@ class Game {
       this.particles.pool = [];
       this.particles.preAllocatePool();
     }
+  }
+
+  // The menu and settings screens draw the starfield background and the
+  // ambient particles before the scene itself.
+  renderMenuScene() {
+    this.drawBackground(this.ctx);
+    this.particles.update(1 / 60);
+    this.particles.draw(this.ctx);
+    this.sceneManager.render(this.ctx, this.width, this.height, this.particles);
   }
 
   // Delegate methods to core systems
@@ -211,8 +258,18 @@ class Game {
             this.state = 'playing';
             this.lastTime = performance.now();
           } else if (result.action === 'restart') {
-            this.state = 'menu';
-            this.sceneManager.switchTo('menu');
+            // Start a fresh run with the same build and difficulty
+            const build = this.player ? this.player.buildName : this.buildNames[0];
+            this.start(build, this.difficulty);
+            this.render();
+            this.debug.render(this.ctx);
+            return;
+          } else if (result.action === 'quit') {
+            // Leave the run for the main menu - the app keeps running
+            this.quitToMenu();
+            this.renderMenuScene();
+            this.debug.render(this.ctx);
+            return;
           }
         }
         this.sceneManager.render(this.ctx, this.width, this.height, this);
@@ -224,6 +281,12 @@ class Game {
         const result = this.sceneManager.update(this.input);
         if (result) {
           if (result.action === 'start') {
+            // Remember the choice so the build select screen comes back to it
+            const menu = this.sceneManager.currentScene;
+            if (menu && menu.buildNames) {
+              menu.buildSelection = Math.max(0, menu.buildNames.indexOf(result.build));
+              menu.difficultySelection = Math.max(0, menu.difficulties.indexOf(result.difficulty));
+            }
             this.start(result.build, result.difficulty);
             return;
           } else if (result.action === 'show_builds') {
@@ -241,19 +304,14 @@ class Game {
             this.state = 'menu';
             this.sceneManager.switchTo('menu');
           } else if (result.action === 'back_to_menu') {
-            this.state = 'menu';
-            this.sceneManager.switchTo('menu');
+            this.quitToMenu();
           } else if (result.action === 'menu') {
-            this.state = 'menu';
-            this.sceneManager.switchTo('menu');
+            this.quitToMenu();
           }
         }
 
         if (this.state === 'menu' || this.state === 'settings') {
-          this.drawBackground(this.ctx);
-          this.particles.update(1/60);
-          this.particles.draw(this.ctx);
-          this.sceneManager.render(this.ctx, this.width, this.height, this.particles);
+          this.renderMenuScene();
         } else {
           this.sceneManager.render(this.ctx, this.width, this.height, this);
         }

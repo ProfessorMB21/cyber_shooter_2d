@@ -30,10 +30,10 @@ class GameOverScene {
     ctx.fillText(`Time Survived: ${Math.floor(this.game.gameTime)}s`, width / 2, height / 2 + 40);
     ctx.fillText(`Kills: ${this.game.kills}`, width / 2, height / 2 + 70);
 
-    // Restart
+    // Return to the main menu
     ctx.fillStyle = '#888';
     ctx.font = '18px monospace';
-    ctx.fillText('Press SPACE to restart', width / 2, height / 2 + 120);
+    ctx.fillText('Press SPACE to return to main menu', width / 2, height / 2 + 120);
   }
 }
 
