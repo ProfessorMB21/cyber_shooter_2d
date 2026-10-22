@@ -269,8 +269,19 @@ class Game extends Simulation {
           } else if (result.action === 'show_builds') {
             this.state = 'menu';
             this.sceneManager.switchTo('menu');
-            if (this.sceneManager.currentScene) {
-              this.sceneManager.currentScene.menuState = 'build_select';
+            const menu = this.sceneManager.currentScene;
+            if (menu) {
+              menu.mode = result.mode || 'single';
+              menu.menuState = 'build_select';
+            }
+          } else if (result.action === 'show_wingman') {
+            // The wingman has a build of its own, chosen on its own screen.
+            this.state = 'menu';
+            this.sceneManager.switchTo('menu');
+            const menu = this.sceneManager.currentScene;
+            if (menu) {
+              menu.mode = 'dualist';
+              menu.menuState = 'wingman_select';
             }
           } else if (result.action === 'show_settings') {
             this.state = 'settings';

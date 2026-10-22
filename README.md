@@ -24,7 +24,8 @@ The canvas fills the browser window and resizes with it.
 ### Main menu
 | Key | Action |
 |---|---|
-| `SPACE` | Play |
+| `UP` / `DOWN` | Choose the game mode |
+| `SPACE` | Select the mode |
 | `S` | Settings |
 
 ### Build / difficulty select
@@ -32,8 +33,15 @@ The canvas fills the browser window and resizes with it.
 |---|---|
 | `UP` / `DOWN` | Choose build (7) |
 | `LEFT` / `RIGHT` | Choose difficulty (4) |
-| `SPACE` | Start the run |
+| `SPACE` | Start the run (in dualist, go to the wingman screen) |
 | `ESC` | Back to the main menu |
+
+### Wingman select (dualist only)
+| Key | Action |
+|---|---|
+| `UP` / `DOWN` | Choose the wingman's build (7) |
+| `SPACE` | Start the run |
+| `ESC` | Back to the build select |
 
 ### Settings
 | Key | Action |
@@ -65,6 +73,31 @@ keeps running - no reload, no restart.
 | Key | Action |
 |---|---|
 | `SPACE` | Return to the main menu |
+
+## Game modes
+
+The main menu is a list of modes. `UP`/`DOWN` moves through it and `SPACE`
+picks one.
+
+| Mode | Players | Where the world runs |
+|---|---|---|
+| Single Player | 1 | On your machine |
+| Dualist | 2 - you and an AI wingman | On your machine |
+
+### Dualist
+You and a wingman fly the same field. The wingman is a full player: it
+takes damage, it levels up, it collects pickups, it uses its abilities, and
+it can die. It is driven by `systems/ai.js` rather than by the keyboard, and
+it has a build of its own, chosen on its own screen after yours.
+
+Kills and XP are shared. Every living player gets the XP for a kill and
+the score for it, and the level penalty is worked out from the *average*
+level of the living players - so a dualist run levels both of you up at
+about the rate one player would level up at.
+
+A panel in the top right lists the other players - their name, their level
+and their health - and every player but your own has a name tag over their
+ship.
 
 ## Builds
 
@@ -308,6 +341,7 @@ config/
   difficulties.js     The 4 difficulty multipliers
   bosses.js           Boss stats, patterns and spawn schedule
   pickups.js          Pickup values and item definitions
+  game-modes.js       The game modes and their player limits
   constants.js        Speed scale, armour reduction, growth, score points
   game.js             Global settings
 ```

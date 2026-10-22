@@ -15,6 +15,7 @@ export { ENEMY_TYPES } from './enemy-types.js';
 export { DIFFICULTIES } from './difficulties.js';
 export { BOSS_PATTERNS, BOSS_CONFIG } from './bosses.js';
 export { PICKUPS, ITEMS } from './pickups.js';
+export { GAME_MODES, DEFAULT_MODE } from './game-modes.js';
 export { GAME_SETTINGS } from './game.js';
 
 // Default export combining all configs

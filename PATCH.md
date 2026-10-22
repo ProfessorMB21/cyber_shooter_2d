@@ -1,5 +1,51 @@
 # Patch History
 
+## 2026-10-23 - Game Modes and Dualist
+
+### New
+- **The main menu is a list of game modes.** `UP`/`DOWN` moves through it
+  and `SPACE` picks one.
+- **`config/game-modes.js`** - the modes, their player limits and whether
+  they are online. The menu reads the list, so adding a mode is a config
+  change as much as a code change.
+- **Dualist mode** - you and an AI wingman on the same field. The wingman
+  is a full player: it takes damage, it levels up, it collects pickups, it
+  uses its abilities, and it can die. It has a build of its own, chosen on
+  its own screen after yours.
+- **A roster panel** in the top right listing the other players in the run
+  - their name, their level and their health. A dead player shows as
+  `DOWN`.
+- **Name tags** over every player but your own, so the wingman and the
+  remote players can be told apart at a glance.
+
+### Changed
+- `scenes/menu.js` - the main menu is a mode list, and there is a new
+  wingman select screen. The build select screen is unchanged for a single
+  player run, so the existing flow - `SPACE`, `SPACE` - still starts a
+  game.
+- `core/game.js` - handles the two new scene actions and passes the mode
+  and the wingman's build into the run.
+- `core/renderer.js` - the roster panel and the name tags.
+- **The guardian's aura now has somebody to cover.** It reaches 260
+  pixels, and the wingman stands inside it when it keeps close.
+
+### Notes
+- Kills and XP are shared across the living players, and the level penalty
+  comes from their *average* level. A single player run is numerically
+  identical to the one it replaced; a dualist run levels both players up
+  at about the rate one player would level up at.
+- The local player's bullets are yellow; everyone else's take their build
+  colour.
+
+### Verified
+- A new headless probe drives the real menu: it opens the build select,
+  starts a single player run, goes back, picks the second mode, picks a
+  build, picks a *different* wingman build, and checks the run that comes
+  out has two players, that the wingman is an AI player with a controller,
+  and that the two builds were chosen independently. **12 assertions, 12
+  passing.**
+- The existing suite is unchanged: 55 assertions, 55 passing.
+
 ## 2026-10-23 - The Friendly AI
 
 ### New

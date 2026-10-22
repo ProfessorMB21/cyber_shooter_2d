@@ -2,6 +2,65 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Game Modes and Dualist (2026-10-23)
+
+### The feature
+The main menu is now a list of game modes. `UP`/`DOWN` moves through it
+and `SPACE` picks one. Two modes are playable today:
+
+| Mode | Players | Where the world runs |
+|---|---|---|
+| Single Player | 1 | On your machine |
+| Dualist | 2 - you and an AI wingman | On your machine |
+
+### Dualist
+You and a wingman fly the same field. The wingman is a full player - it
+takes damage, it levels up, it collects pickups, it uses its abilities,
+and it can die. It is driven by the AI rather than by the keyboard, and it
+has a build of its own, chosen on its own screen after yours:
+
+```
+Main menu -> DUALIST -> your build + difficulty -> the wingman's build -> play
+```
+
+The build select screen is unchanged for a single player run, so the
+existing flow - `SPACE`, `SPACE` - still starts a game.
+
+### Shared kills and XP
+A kill grants XP and score to every living player. The level penalty is
+worked out from the *average* level of the living players, so a single
+player run is numerically identical to the one it replaced, and a dualist
+run levels both players up at about the rate one player would level up at.
+
+The guardian's cooldown aura now has somebody to cover: it reaches 260
+pixels, and the wingman stands inside it when it keeps close.
+
+### Reading the screen
+- A panel in the top right lists the other players in the run - their name,
+  their level and their health. A dead player shows as `DOWN`.
+- Every player but your own has a name tag over their ship, so the wingman
+  and the remote players can be told apart at a glance.
+- The local player's bullets are yellow; everyone else's take their build
+  colour.
+
+### Files Modified
+- `config/game-modes.js` - new: the modes, their player limits and whether
+  they are online
+- `config/index.js` - re-exports them
+- `scenes/menu.js` - the main menu is a mode list, and there is a new
+  wingman select screen
+- `core/game.js` - handles the two new scene actions
+- `core/renderer.js` - the roster panel and the name tags
+
+### Verified
+A new headless probe drives the real menu: it opens the build select, starts
+a single player run, goes back, picks the second mode, picks a build, picks
+a different wingman build, and checks the run that comes out has two
+players, that the wingman is an AI player with a controller, and that the
+two builds were chosen independently. **12 assertions, 12 passing.**
+
+The existing suite is unchanged: 55 assertions, 55 passing.
+
 ## The Friendly AI (2026-10-23)
 
 ### The feature

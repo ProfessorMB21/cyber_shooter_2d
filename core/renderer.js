@@ -43,6 +43,17 @@ class RenderingSystem {
       player.draw(ctx);
     }
 
+    // A name tag over every player but the local one, so the wingman and
+    // the remote players can be told apart at a glance.
+    for (const player of this.game.players) {
+      if (player === this.game.player) continue;
+      const center = player.getCenter();
+      ctx.fillStyle = player.color;
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(player.playerName, center.x, center.y - 26);
+    }
+
     // Draw enemies (with quality-based culling)
     if (settings.getSetting('entityCulling')) {
       // Performance/Balanced: culling enabled
@@ -102,6 +113,51 @@ class RenderingSystem {
     }
 
     this.renderLevelUpNotice(ctx);
+    this.renderRoster(ctx);
+  }
+
+  // The other players in the run. There is one in dualist - the AI
+  // wingman - and up to four more online.
+  renderRoster(ctx) {
+    const others = this.game.players.filter(p => p !== this.game.player);
+    if (others.length === 0) return;
+
+    const panelWidth = 200;
+    const rowHeight = 32;
+    const x = this.game.width - panelWidth - 10;
+    const y = 10;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(x, y, panelWidth, others.length * rowHeight + 10);
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, panelWidth, others.length * rowHeight + 10);
+
+    others.forEach((p, i) => {
+      const rowY = y + 24 + i * rowHeight;
+      ctx.fillStyle = p.color;
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(p.playerName, x + 10, rowY);
+
+      ctx.fillStyle = p.dead ? '#f00' : '#fff';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(p.dead ? 'DOWN' : `Lv${p.level}`, x + panelWidth - 10, rowY);
+
+      // Health bar
+      const barX = x + 10;
+      const barY = rowY + 5;
+      const barWidth = panelWidth - 20;
+      const percent = p.currentStats.maxHp > 0 ? Math.max(0, p.hp / p.currentStats.maxHp) : 0;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(barX, barY, barWidth, 6);
+      ctx.fillStyle = percent > 0.5 ? '#0f0' : percent > 0.25 ? '#ff0' : '#f00';
+      ctx.fillRect(barX, barY, barWidth * percent, 6);
+    });
+
+    ctx.restore();
   }
 
   // A level-up is announced with a brief notice that fades away, so play is
