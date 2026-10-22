@@ -8,6 +8,7 @@
 import { InputHandler } from '../input.js';
 import { BUILDS } from '../entities/player.js';
 import { MenuScene, GameOverScene, PauseScene, SettingsScene, SceneManager } from '../scenes/index.js';
+import { AIController } from '../systems/ai.js';
 import { Simulation } from './simulation.js';
 import { RenderingSystem } from './renderer.js';
 import { VisualEffectsSystem } from './visual-effects.js';
@@ -49,6 +50,9 @@ class Game extends Simulation {
     // The options the current run was started with, so a restart can repeat
     // them
     this.runOptions = { mode: 'single' };
+
+    // One controller per AI player, keyed by player id
+    this.aiControllers = new Map();
 
     // Level tracked at the start of the frame, to detect level-ups
     this.levelAtFrameStart = 1;
@@ -113,6 +117,14 @@ class Game extends Simulation {
       });
     }
 
+    // Every AI player gets a controller. It produces the same input shape
+    // the keyboard produces, so nothing downstream - the player entity, the
+    // combat system, the cooldowns - knows the difference.
+    this.aiControllers.clear();
+    for (const player of this.players) {
+      if (player.isAI) this.aiControllers.set(player.playerId, new AIController(player, this));
+    }
+
     // Make game instance available to player for quality settings
     window.gameInstance = this;
 
@@ -142,6 +154,7 @@ class Game extends Simulation {
   clearRunState() {
     super.clearRunState();
     this.ally = null;
+    this.aiControllers.clear();
     this.levelAtFrameStart = 1;
     this.allyLevels.clear();
     this.levelUpNotice = null;
@@ -316,10 +329,16 @@ class Game extends Simulation {
     if (this.player && this.player.dead) this.switchState('gameover');
   }
 
-  // The input for the local player, for this frame.
+  // The inputs for this frame: the local player comes from the keyboard,
+  // and every AI player comes from its controller.
   buildInputs(deltaTime = 1 / 60) {
     const inputs = new Map();
     for (const player of this.players) {
+      if (player.isAI) {
+        const controller = this.aiControllers.get(player.playerId);
+        if (controller) inputs.set(player.playerId, controller.update(deltaTime));
+        continue;
+      }
       if (player !== this.player) continue;
       const movement = this.input.getMovement();
       inputs.set(player.playerId, {
@@ -369,7 +388,4 @@ class Game extends Simulation {
   }
 }
 
-// The AI needs the frame time to decide how long to commit to a decision.
-// It is passed through the controller rather than stored on the game, so
-// that a controller can be driven from a test without a frame loop.
 export { Game };

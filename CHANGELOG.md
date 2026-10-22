@@ -2,6 +2,101 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Friendly AI (2026-10-23)
+
+### The feature
+`systems/ai.js` is a new controller that drives a player the way a person
+would: pick a target, move around it, shoot at it, and use an ability when
+the build says the moment is right. It produces the same input object the
+keyboard produces, so nothing downstream - the player entity, the combat
+system, the cooldowns - knows whether a person or the AI is in charge.
+
+An AI player is a full player. It takes damage, it levels up, it collects
+pickups, it uses its abilities, and it can die.
+
+### How each build fights
+Every build has its own idea of a fight, in one table:
+
+| Build | Range | Strafing | Stays with the party | Aggression |
+|---|---|---|---|---|
+| Fighter | 220 | 0.70 | 380 | 0.65 |
+| Glass Cannon | 300 | 0.80 | 380 | 0.55 |
+| Tank | 150 | 0.40 | 320 | 0.75 |
+| Balanced | 210 | 0.60 | 360 | 0.65 |
+| Sniper | 430 | 0.50 | 420 | 0.45 |
+| Berserker | 110 | 0.30 | 300 | 0.95 |
+| Guardian | 190 | 0.50 | 200 | 0.50 |
+
+The range is the distance it holds from its target - the berserker wants to
+be on top of the enemy, the sniper wants to be far away, the glass cannon
+sits in between. Strafing is how much it circles. "Stays with the party" is
+how close it keeps to the other players, and the guardian keeps closest of
+all because its aura only reaches 260 pixels. Aggression is how hard it
+pushes towards the target rather than away from it.
+
+On top of that it swerves away from the enemies that are on top of it,
+goes for a health pickup when it is hurt, and stays off the edges of the
+world. It holds its target for 0.6 seconds at a time so it does not flip
+between two equally close enemies every frame, and a boss wins the contest
+if it is within 700 pixels.
+
+### When it uses an ability
+The abilities fire on rules rather than on a timer. Each rule reads what
+the AI can see - how hurt it is, how many enemies are close, how its ally
+is doing:
+
+| Ability | Uses it when |
+|---|---|
+| Healing Shot | below 65% HP |
+| Dash | an enemy is within 95px and it is below 60% HP, or 3+ enemies are on top of it |
+| Overload | 2+ enemies are nearby, or it is below 50% HP with a target |
+| Teleport | below 35% HP, or 3+ enemies are on top of it |
+| Shield | below 60% HP, or an enemy is within 80px |
+| Ground Slam | 3+ enemies are nearby |
+| Adrenaline Rush | the target is further than 380px and it is above 50% HP, or it is below 40% HP |
+| Sniper Shot | it has a target within 600px |
+| Smoke Screen | below 50% HP, or 3+ enemies are on top of it |
+| Berserk Rage | below 50% HP, or its rage is low and something is nearby |
+| Whirlwind | 3+ enemies are on top of it, or 4+ are nearby |
+| Divine Protection | below 40% HP, or 4+ enemies are on top of it, or its ally is in danger |
+
+The rules are keyed by the ability's display name, so all twelve live in
+one table in `systems/ai.js` and every build's pair of abilities finds its
+entry there.
+
+### How it is wired in
+- `core/game.js` keeps a map of controllers, keyed by player id. A player
+  flagged `isAI` gets one in `start()`, and `buildInputs()` routes that
+  player through its controller instead of the keyboard.
+- The frame time is threaded through `buildInputs(deltaTime)` rather than
+  stored on the game, so a controller can be driven from a test without a
+  frame loop.
+- The AI aims. `combat.playerShoot(player, aim)` already took an angle, so
+  the AI's bullets go where it is looking while the human's still go
+  straight up.
+
+### Files Modified
+- `systems/ai.js` - new: the controller, the per-build table, the ability
+  rules
+- `core/game.js` - the controller map, and `buildInputs()` routes the AI
+  players
+
+### Verified
+Two new headless probes:
+- `probe-ai.mjs` runs the controller against a real `Simulation` for each
+  of the seven builds - 15 seconds each, with a ring of enemies around the
+  AI. Every build has to move, shoot, damage the enemies, use an ability
+  and survive. **42 assertions, 42 passing.**
+- `probe-dualist.mjs` boots the real `Game` class with a human player and
+  an AI wingman and checks the wingman is driven by a controller, moves on
+  its own, shoots the enemies, and that the run renders without throwing.
+  **8 assertions, 8 passing.**
+
+The existing suite is unchanged: 55 assertions, 55 passing. The
+performance harness is unchanged too: 254.06 canvas fills per frame
+(baseline 252.81-253.6), one `requestAnimationFrame` callback per frame,
+0 errors.
+
 ## Simulation / Presentation Split (2026-10-23)
 
 ### The feature

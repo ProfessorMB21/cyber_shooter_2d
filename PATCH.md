@@ -1,5 +1,47 @@
 # Patch History
 
+## 2026-10-23 - The Friendly AI
+
+### New
+- **`systems/ai.js` - the AI controller.** It drives a player the way a
+  person would: pick a target, move around it, shoot at it, and use an
+  ability when the build says the moment is right. It produces the same
+  input object the keyboard produces, so nothing downstream knows the
+  difference.
+- **An AI player is a full player.** It takes damage, it levels up, it
+  collects pickups, it uses its abilities, and it can die.
+- **A per-build table of how to fight** - range, strafing, how close to
+  stay to the party, and aggression. The berserker wants to be on top of
+  the enemy, the sniper wants to be far away, the guardian stays closest
+  to the party because its aura only reaches 260 pixels.
+- **A rule per ability**, keyed by the ability's display name, so all
+  twelve live in one table and every build's pair finds its entry there.
+  The rules read what the AI can see: how hurt it is, how many enemies are
+  close, and how its ally is doing.
+- **The AI aims.** `combat.playerShoot(player, aim)` already took an
+  angle, so the AI's bullets go where it is looking while the human's
+  still go straight up.
+
+### Changed
+- `core/game.js` - a map of controllers keyed by player id. A player
+  flagged `isAI` gets one in `start()`, and `buildInputs()` routes it
+  through its controller instead of the keyboard. The frame time is
+  threaded through `buildInputs(deltaTime)` rather than stored on the
+  game, so a controller can be driven from a test without a frame loop.
+
+### Verified
+- `probe-ai.mjs` runs the controller against a real `Simulation` for each
+  of the seven builds - 15 seconds each, with a ring of enemies around the
+  AI. Every build has to move, shoot, damage the enemies, use an ability
+  and survive. **42 assertions, 42 passing.**
+- `probe-dualist.mjs` boots the real `Game` class with a human player and
+  an AI wingman: the wingman is driven by a controller, moves on its own,
+  shoots the enemies, and the run renders without throwing. **8
+  assertions, 8 passing.**
+- The existing suite is unchanged: 55 assertions, 55 passing.
+- The performance harness is unchanged: 254.06 canvas fills per frame
+  (baseline 252.81-253.6), one rAF callback per frame, 0 errors.
+
 ## 2026-10-23 - Simulation / Presentation Split
 
 ### New

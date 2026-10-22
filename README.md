@@ -128,6 +128,73 @@ Pickup bonuses (damage, speed) are permanent and survive level ups - they
 are kept in a separate pool from the stats that are recomputed from the
 build's base values.
 
+## The friendly AI
+
+`systems/ai.js` drives a player the way a person would: pick a target, move
+around it, shoot at it, and use an ability when the build says the moment
+is right. It produces the same input object the keyboard produces, so
+nothing downstream - the player entity, the combat system, the cooldowns -
+knows or cares whether a person or the AI is in charge.
+
+An AI player is a full player. It takes damage, it levels up, it collects
+pickups, it uses its abilities, and it can die.
+
+### How each build fights
+
+| Build | Range | Strafing | Stays with the party | Aggression |
+|---|---|---|---|---|
+| Fighter | 220 | 0.70 | 380 | 0.65 |
+| Glass Cannon | 300 | 0.80 | 380 | 0.55 |
+| Tank | 150 | 0.40 | 320 | 0.75 |
+| Balanced | 210 | 0.60 | 360 | 0.65 |
+| Sniper | 430 | 0.50 | 420 | 0.45 |
+| Berserker | 110 | 0.30 | 300 | 0.95 |
+| Guardian | 190 | 0.50 | 200 | 0.50 |
+
+- **Range** is the distance it tries to hold from its target. The berserker
+  wants to be on top of the enemy, the sniper wants to be far away, and the
+  glass cannon sits in between - far enough to survive, close enough to
+  shoot.
+- **Strafing** is how much it circles while it fights. The glass cannon
+  circles the most, the berserker barely at all.
+- **Stays with the party** is how close it stays to the other players. The
+  guardian keeps closest of all - it is the support build, and its aura
+  only reaches 260 pixels.
+- **Aggression** is how hard it pushes towards the target rather than away
+  from it.
+
+On top of that it swerves away from the enemies that are on top of it,
+goes for a health pickup when it is hurt, and stays off the edges of the
+world. It keeps its target for 0.6 seconds at a time so it does not flip
+between two equally close enemies every frame, and a boss wins the
+contest if it is within 700 pixels - a boss is worth more than a grunt.
+
+### When it uses an ability
+
+The abilities fire on rules, not on a timer. The rule reads what the AI
+can see - how hurt it is, how many enemies are close, and how its ally is
+doing:
+
+| Ability | Uses it when |
+|---|---|
+| Healing Shot | below 65% HP |
+| Dash | an enemy is within 95px and it is below 60% HP, or 3+ enemies are on top of it |
+| Overload | 2+ enemies are nearby, or it is below 50% HP with a target |
+| Teleport | below 35% HP, or 3+ enemies are on top of it |
+| Shield | below 60% HP, or an enemy is within 80px |
+| Ground Slam | 3+ enemies are nearby |
+| Adrenaline Rush | the target is further than 380px and it is above 50% HP, or it is below 40% HP |
+| Sniper Shot | it has a target within 600px |
+| Smoke Screen | below 50% HP, or 3+ enemies are on top of it |
+| Berserk Rage | below 50% HP, or its rage is low and something is nearby |
+| Whirlwind | 3+ enemies are on top of it, or 4+ are nearby |
+| Divine Protection | below 40% HP, or 4+ enemies are on top of it, or its ally is in danger |
+
+The rules are keyed by the ability's display name, so they live in one
+table in `systems/ai.js` and every build's pair of abilities finds its
+entry there. A rule that does not exist for an ability means the AI never
+uses it.
+
 ## Difficulty
 
 | Difficulty | Enemy speed | Enemy damage | Enemy HP | Score |
@@ -232,6 +299,7 @@ scenes/
 systems/
   entity.js           Base Entity class (physics, damage, health bar)
   particles.js        Pooled particle system
+  ai.js               The friendly AI controller and the per-build rules
 
 config/
   index.js            Re-exports every config module
