@@ -1,5 +1,45 @@
 # Patch History
 
+## 2026-10-23 - The Multiplayer Server
+
+### New
+- **`server/index.js`** - the server. It serves the game over HTTP and
+  runs the networked worlds over a WebSocket on the same port, so one
+  process is the whole thing. `npm start` runs it.
+- **`server/websocket.js`** - a hand written RFC 6455 WebSocket server.
+  The project has no build step and no `node_modules`, so a library was not
+  an option. This is the part of the RFC the game needs: the opening
+  handshake, text frames, fragmentation, ping, pong and close.
+- **`server/rooms.js`** - the rooms. A room is a lobby and a world:
+  players join, pick a build, and when somebody starts the run the room
+  creates a `Simulation` and ticks it. Up to five players a room.
+- **`shared/protocol.js`** - the wire protocol, shared by the browser and
+  the server so the two can never disagree about what a message means.
+- **`npm start`** - a script that runs the server.
+
+### Changed
+- `package.json` - a `start` script.
+
+### Notes
+- The server is the authority. A room runs **one** simulation, on the
+  server; the clients send their input and are sent snapshots, so they
+  cannot drift apart.
+- The world ticks at 60 Hz and the snapshots go out at 20 Hz. Nobody can
+  see the difference between the two and the bandwidth is real.
+- A client's input goes stale after half a second without a refresh, so a
+  client that stalls stops moving rather than running on forever.
+- The static file server refuses to serve anything outside the project
+  directory. Four different traversal attempts were checked by hand and
+  all of them come back 404.
+
+### Verified
+- A new headless probe starts the real server as a child process and
+  drives it with two real WebSocket clients: connect, welcome, create a
+  room, join it, start the run, watch the world be simulated, watch the
+  snapshots arrive with the players in them and moving, then drop one
+  client and check the server keeps going. **16 assertions, 16 passing.**
+- The existing suite is unchanged: 55 assertions, 55 passing.
+
 ## 2026-10-23 - Game Modes and Dualist
 
 ### New

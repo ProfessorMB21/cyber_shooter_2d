@@ -2,6 +2,71 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Multiplayer Server (2026-10-23)
+
+### The feature
+A server that serves the game over HTTP and runs the networked worlds over
+a WebSocket on the same port. It has no dependencies at all.
+
+```bash
+npm start          # node server/index.js
+# then open http://localhost:8080
+```
+
+### What is in it
+- **`server/websocket.js`** - a hand written RFC 6455 WebSocket server.
+  The project has no build step and no `node_modules`, so a library was not
+  an option. This is the part of the RFC the game needs: the opening
+  handshake, text frames in both directions, fragmentation, ping, pong and
+  close. The frames the server sends are never masked; the ones it receives
+  always are, and the mask is undone as they are parsed.
+- **`server/rooms.js`** - the rooms. A room is a lobby and a world: players
+  join it, pick a build, and when somebody starts the run the room creates
+  a `Simulation`, adds every player to it, and ticks it. A room holds up to
+  five players.
+- **`server/index.js`** - the HTTP server, the WebSocket upgrade, the
+  message handling and the ticker. One timer drives every room.
+- **`shared/protocol.js`** - the messages the two sides exchange, shared by
+  both so they can never disagree about what a message means.
+
+### The server is the authority
+A networked room runs **one** simulation, on the server. The clients send
+their input and are sent snapshots of the world; they never simulate it
+themselves, so they cannot drift apart.
+
+- The world ticks at 60 Hz. The snapshots go out at 20 Hz - nobody can see
+  the difference between the two and the bandwidth is real.
+- A snapshot carries the players, the enemies, the bosses, the projectiles
+  and the pickups, with the positions in each entity's own centre.
+- A client's input goes stale after half a second without a refresh. A
+  client that stalls stops moving rather than running on forever.
+- When the last player in a room dies the run is over and the room goes
+  back to being a lobby.
+
+### Files Modified
+- `server/index.js` - new: the HTTP server, the WebSocket upgrade and the
+  60 Hz ticker
+- `server/websocket.js` - new: the hand written WebSocket
+- `server/rooms.js` - new: the lobby rooms and the worlds they run
+- `shared/protocol.js` - new: the wire protocol
+- `package.json` - a `start` script
+
+### Verified
+A new headless probe starts the real server as a child process and drives
+it with two real WebSocket clients: they connect, are welcomed with
+different ids, one creates a room, the other joins it, the run starts, the
+world is simulated on the server, the snapshots reach both clients with
+the players in them and the players moving, and a disconnect takes the
+player out of the world without stopping the server. **16 assertions, 16
+passing.**
+
+The static server was checked by hand too: the game files are served with
+the right content types, a missing file is a 404, and four different
+path-traversal attempts (raw and percent-encoded) all come back 404
+rather than reaching outside the project directory.
+
+The existing suite is unchanged: 55 assertions, 55 passing.
+
 ## Game Modes and Dualist (2026-10-23)
 
 ### The feature

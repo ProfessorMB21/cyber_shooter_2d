@@ -5,7 +5,8 @@
   "type": "module",
   "description": "A retro 2D space shooter. Vanilla JavaScript, HTML5 Canvas 2D, ES modules.",
   "scripts": {
-    "serve": "python -m http.server 8000"
+    "serve": "python -m http.server 8000",
+    "start": "node server/index.js"
   },
   "dependencies": {},
   "devDependencies": {}

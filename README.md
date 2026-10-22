@@ -19,6 +19,21 @@ Safari 10.1+, Edge 16+).
 
 The canvas fills the browser window and resizes with it.
 
+## The multiplayer server
+
+The online mode needs a server. The one in `server/` serves the game over
+HTTP and runs the networked worlds over a WebSocket on the same port:
+
+```bash
+npm start          # node server/index.js
+# then open http://localhost:8080
+```
+
+It has no dependencies. The WebSocket is hand written in
+`server/websocket.js` - the project has no build step and no `node_modules`,
+so a library was not an option. `PORT` and `HOST` are read from the
+environment.
+
 ## Controls
 
 ### Main menu
@@ -344,6 +359,14 @@ config/
   game-modes.js       The game modes and their player limits
   constants.js        Speed scale, armour reduction, growth, score points
   game.js             Global settings
+
+shared/
+  protocol.js         The messages the client and the server exchange
+
+server/
+  index.js            The HTTP server, the WebSocket upgrade and the ticker
+  websocket.js        A hand written RFC 6455 WebSocket server
+  rooms.js            The lobby rooms and the worlds they run
 ```
 
 `systems/collision.js`, `systems/projectiles.js`, `systems/enemies.js`,
@@ -366,6 +389,11 @@ running game. They are candidates for deletion.
   what lets the same world code run on a server with no DOM at all, which is
   what a networked run needs: the world has to be simulated in exactly one
   place, or the clients drift apart.
+- **The server is the authority.** A networked room runs one `Simulation` on
+  the server. The clients send their input and are sent snapshots of the
+  world; they never simulate it themselves. The world ticks at 60 Hz and the
+  snapshots go out at 20 Hz, because nobody can see the difference between
+  the two and the bandwidth is real.
 - **Audio**: none. Not implemented.
 - **Mouse**: tracked but unused. Shots travel straight up; aiming is
   keyboard-only.
