@@ -3,14 +3,6 @@
 // Speed scaling factor for gameplay (reduced from 80)
 const SPEED_SCALE_FACTOR = 30;
 
-// Stat caps to prevent overflow
-const STAT_CAPS = {
-  maxSpeed: 300,      // Maximum speed player can achieve
-  maxShield: 150,     // Maximum shield cap
-  maxHp: 1500,        // Maximum HP cap
-  maxDamage: 210      // Maximum damage cap
-};
-
 // Stat growth multipliers per level
 const STAT_GROWTH = {
   hpMultiplier: 1.2,
@@ -38,7 +30,6 @@ const PARTICLES = {
 
 export {
   SPEED_SCALE_FACTOR,
-  STAT_CAPS,
   STAT_GROWTH,
   SCORE_POINTS,
   PARTICLES

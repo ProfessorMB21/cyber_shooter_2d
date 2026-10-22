@@ -70,27 +70,43 @@ keeps running - no reload, no restart.
 
 Seven builds, each with two active abilities and a per-level passive.
 
-| Build | HP | Damage | Speed | Armor | Evasion | Crit | Abilities | Passive |
+| Build | HP | Damage | Speed | Armor | Evasion | Crit | Abilities | Per-level growth |
 |---|---|---|---|---|---|---|---|---|
-| Fighter | 350 | 12 | 2.5 | 15 | 5 | - | Healing Shot, Dash | +8% HP per level |
-| Glass Cannon | 200 | 35 | 3.5 | 8 | 15 | 20% / x2.0 | Overload, Teleport | +10% damage per level |
-| Tank | 550 | 8 | 1.8 | 45 | 0 | - | Shield, Ground Slam | +12% HP, +5% armor per level |
-| Balanced | 300 | 15 | 3.0 | 22 | 12 | 10% / x1.5 | Shield, Adrenaline Rush | +6% to HP, damage, armor |
-| Sniper | 220 | 14 | 3.0 | 10 | 20 | 25% / x2.5 | Sniper Shot, Smoke Screen | +8% crit chance per level |
-| Berserker | 320 | 18 | 3.2 | 12 | 10 | 18% / x2.2 | Berserk Rage, Whirlwind | +8% damage per rage point |
-| Guardian | 450 | 10 | 2.2 | 40 | 8 | - | Shield, Divine Protection | +10% armor per level |
+| Fighter | 350 | 12 | 2.5 | 15 | 5 | - | Healing Shot, Dash | +8% HP |
+| Glass Cannon | 200 | 35 | 3.5 | 8 | 15 | 20% / x2.0 | Overload, Teleport | +10% damage |
+| Tank | 550 | 8 | 1.8 | 45 | 0 | - | Shield, Ground Slam | +12% HP, +5% armor |
+| Balanced | 300 | 15 | 3.0 | 22 | 12 | 10% / x1.5 | Shield, Adrenaline Rush | +6% HP, damage, armor |
+| Sniper | 220 | 14 | 3.0 | 10 | 20 | 25% / x2.5 | Sniper Shot, Smoke Screen | +8% crit chance |
+| Berserker | 320 | 18 | 3.2 | 12 | 10 | 18% / x2.2 | Berserk Rage, Whirlwind | +5% damage, +8% per rage point |
+| Guardian | 450 | 10 | 2.2 | 40 | 8 | - | Shield, Divine Protection | +10% armor |
 
 Base values live in `config/player-builds.js`. Speed is scaled by
 `SPEED_SCALE_FACTOR` (30) at load time.
 
-### Leveling
+### Leveling and stat growth
 
 Kills award XP. Each level threshold is 1.5x the previous one, and a level
 up restores 30% of max HP. A single award can span several thresholds - a
 boss kill at low level can grant multiple levels at once.
 
+Each build declares which of its stats grow per level, and by what fraction
+of its base value (the "per-level growth" column above). **The growth is
+never capped.** A stat that grows keeps growing for the whole run, so a
+glass cannon's damage at level 50 is 206 and still climbing, and a tank
+reaches 3784 HP. The one exception is the sniper's crit chance, which stops
+at 100% because a chance above 100% cannot mean anything.
+
+Armor is a second exception in effect, not in value: the damage reduction
+it grants is capped at 75%, so armor past 50 keeps rising as a number but
+stops reducing any more damage. The cap is on the reduction, not on the
+stat.
+
 Level-ups are announced with a short fading notice and a particle burst at
 the player. **Play is never interrupted by a level up.**
+
+Pickup bonuses (damage, speed) are permanent and survive level ups - they
+are kept in a separate pool from the stats that are recomputed from the
+build's base values.
 
 ## Difficulty
 
@@ -135,8 +151,8 @@ shield worth 10% of max HP.
 ## Pickups
 
 Health (+20), shield (+10), speed (+5) and damage (+2). They drop from
-enemies and spawn randomly on the field, and respect the stat caps in
-`config/constants.js`.
+enemies and spawn randomly on the field. Shield, speed and damage pickups
+are permanent and are not capped; health pickups heal.
 
 ## Performance profiles
 
@@ -179,7 +195,7 @@ entities/
   enemy.js            Enemy types and AI
   boss.js             Boss entity and phase logic
   boss-patterns.js    Attack pattern generation
-  pickup.js           Pickups and stat cap enforcement
+  pickup.js           Pickups and their permanent bonuses
   projectile.js       Projectile physics and rendering
   abilities.js        The 14 active abilities
   build-visuals.js    Per-build ship decoration
@@ -202,7 +218,7 @@ config/
   difficulties.js     The 4 difficulty multipliers
   bosses.js           Boss stats, patterns and spawn schedule
   pickups.js          Pickup values and item definitions
-  constants.js        Speed scale, stat caps, growth, score points
+  constants.js        Speed scale, growth, score points
   game.js             Global settings
 ```
 
@@ -234,8 +250,6 @@ running game. They are candidates for deletion.
   rolls. Its comment also says 40 enemies while the code caps at 30.
 - `config/constants.js` exports `PARTICLES` and `STAT_GROWTH`, which nothing
   reads.
-- `STAT_CAPS.maxSpeed` (300) is applied after `SPEED_SCALE_FACTOR` (30), so
-  the effective cap is on the scaled value, not the base one.
 - `GAME_SETTINGS.TITLE` still says "Simple Claude Game".
 - The mouse is not used for aiming.
 

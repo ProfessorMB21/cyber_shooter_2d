@@ -1,10 +1,6 @@
 // Pickup Entity
 
-import { PICKUPS, STAT_CAPS } from '../config/index.js';
-
-const MAX_SPEED = STAT_CAPS.maxSpeed;
-const MAX_SHIELD = STAT_CAPS.maxShield;
-const MAX_DAMAGE = STAT_CAPS.maxDamage;
+import { PICKUPS } from '../config/index.js';
 
 class Pickup {
   constructor(x, y, type) {
@@ -45,21 +41,21 @@ class Pickup {
   }
 
   applyEffect(player) {
+    // Pickups add permanent bonuses. They are not capped, and they are not
+    // wiped by a level up - the player's bonus pool is separate from the
+    // stats that are recomputed from the build's base values.
     switch (this.type) {
       case 'health':
         player.heal(this.value);
         break;
       case 'shield':
-        // Cap shield at max
-        player.shield = Math.min(player.shield + this.value, MAX_SHIELD);
+        player.addShield(this.value);
         break;
       case 'speed':
-        // Cap speed at max
-        player.currentStats.speed = Math.min(player.currentStats.speed + this.value, MAX_SPEED);
+        player.addBonus('speed', this.value);
         break;
       case 'damage':
-        // Cap damage at max
-        player.currentStats.damage = Math.min(player.currentStats.damage + this.value, MAX_DAMAGE);
+        player.addBonus('damage', this.value);
         break;
     }
   }
@@ -133,4 +129,4 @@ class PickupManager {
   }
 }
 
-export { Pickup, PickupManager, MAX_SPEED, MAX_SHIELD, MAX_DAMAGE };
+export { Pickup, PickupManager };

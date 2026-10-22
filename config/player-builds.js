@@ -1,4 +1,9 @@
 // Player Build Configurations
+//
+// `growth` declares which of the build's stats rise with each level, and by
+// what fraction of the build's base value. The rates are per level and are
+// never capped: a stat that grows keeps growing for the whole run. A build
+// that lists no stat grows nothing - every build has at least one.
 
 const PLAYER_BUILDS = [
   {
@@ -11,6 +16,7 @@ const PLAYER_BUILDS = [
       evasion: 5, criticalChance: 0, criticalDamage: 1.0, regen: 1, cooldown: 1
     },
     abilities: ['HEALING SHOT', 'DASH'],
+    growth: { maxHp: 0.08 },
     passive: 'Toughen Up - 8% HP gain per level'
   },
   {
@@ -23,6 +29,7 @@ const PLAYER_BUILDS = [
       evasion: 15, criticalChance: 0.20, criticalDamage: 2.0, regen: 0.5, cooldown: 1
     },
     abilities: ['OVERLOAD', 'TELEPORT'],
+    growth: { damage: 0.10 },
     passive: 'Overclock - 10% damage per level'
   },
   {
@@ -35,6 +42,7 @@ const PLAYER_BUILDS = [
       evasion: 0, criticalChance: 0, criticalDamage: 0, regen: 1.5, cooldown: 1
     },
     abilities: ['SHIELD', 'GROUND SLAM'],
+    growth: { maxHp: 0.12, armor: 0.05 },
     passive: 'Iron Skin - 12% HP gain per level'
   },
   {
@@ -47,6 +55,7 @@ const PLAYER_BUILDS = [
       evasion: 12, criticalChance: 0.10, criticalDamage: 1.5, regen: 1, cooldown: 1
     },
     abilities: ['SHIELD', 'ADRENALINE RUSH'],
+    growth: { maxHp: 0.06, damage: 0.06, armor: 0.06 },
     passive: 'Adaptability - 6% all stats per level'
   },
   {
@@ -59,6 +68,7 @@ const PLAYER_BUILDS = [
       evasion: 20, criticalChance: 0.25, criticalDamage: 2.5, regen: 0.8, cooldown: 1
     },
     abilities: ['SNIPER SHOT', 'SMOKE SCREEN'],
+    growth: { criticalChance: 0.08 },
     passive: 'Sharpshooter - 8% crit chance per level'
   },
   {
@@ -71,7 +81,8 @@ const PLAYER_BUILDS = [
       evasion: 10, criticalChance: 0.18, criticalDamage: 2.2, regen: 1, cooldown: 1
     },
     abilities: ['BERSERK RAGE', 'WHIRLWIND'],
-    passive: 'Adrenaline - 8% damage per rage, max 100%'
+    growth: { damage: 0.05 },
+    passive: 'Adrenaline - 5% damage per level, 8% per rage, max 100%'
   },
   {
     name: 'guardian',
@@ -83,6 +94,7 @@ const PLAYER_BUILDS = [
       evasion: 8, criticalChance: 0, criticalDamage: 0, regen: 1.5, cooldown: 1
     },
     abilities: ['SHIELD', 'DIVINE PROTECTION'],
+    growth: { armor: 0.10 },
     passive: 'Protector - 10% armor per level'
   }
 ];
@@ -95,6 +107,7 @@ PLAYER_BUILDS.forEach(build => {
     description: build.description,
     color: build.color,
     stats: { ...build.stats },
+    growth: { ...build.growth },
     abilities: build.abilities,
     passive: build.passive
   };

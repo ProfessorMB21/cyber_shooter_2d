@@ -1,7 +1,7 @@
 // Player Entity with Stats and Level System
 
 import { Entity } from '../systems/entity.js';
-import { BUILDS, STAT_CAPS, STAT_GROWTH, SPEED_SCALE_FACTOR } from '../config/index.js';
+import { BUILDS, STAT_GROWTH, SPEED_SCALE_FACTOR } from '../config/index.js';
 import { PlayerAbilities } from './abilities.js';
 import { drawBuildVisual } from './build-visuals.js';
 
@@ -17,6 +17,10 @@ class Player extends Entity {
     this.xpToNextLevel = 100;
     this.baseStats = { ...build.stats };
     this.currentStats = { ...build.stats };
+    // Bonuses collected from pickups. They are kept apart from the derived
+    // stats because levelling up recomputes those from the build's base
+    // values - a bonus stored in currentStats would be thrown away.
+    this.bonusStats = { maxHp: 0, damage: 0, speed: 0, armor: 0 };
     this.evasion = build.stats.evasion;
     this.criticalChance = build.stats.criticalChance;
     this.criticalDamage = build.stats.criticalDamage;
@@ -33,32 +37,45 @@ class Player extends Entity {
     this.calculateDerivedStats();
   }
 
-  // Calculate derived stats from base stats
+  // Recompute the stats that scale with the level.
+  //
+  // Each build declares which of its stats grow per level, and by what
+  // fraction of its base value, in config/player-builds.js. Nothing here is
+  // capped: a stat that grows keeps growing for as long as the player
+  // survives, and the bonuses collected from pickups are added on top of
+  // the scaled base rather than being overwritten by it.
   calculateDerivedStats() {
-    switch (this.buildName) {
-      case 'fighter':
-        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.08));
-        break;
-      case 'glass_cannon':
-        this.currentStats.damage = Math.floor(this.baseStats.damage * (1 + (this.level - 1) * 0.10));
-        break;
-      case 'tank':
-        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.12));
-        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.05));
-        break;
-      case 'balanced':
-        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.06));
-        this.currentStats.damage = Math.floor(this.baseStats.damage * (1 + (this.level - 1) * 0.06));
-        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.06));
-        break;
-      case 'sniper':
-        this.criticalChance = Math.min(1, this.baseStats.criticalChance + (this.level - 1) * 0.08);
-        break;
-      case 'guardian':
-        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.10));
-        break;
-    }
+    const base = this.baseStats;
+    const bonus = this.bonusStats;
+    const growth = this.build.growth || {};
+    const levels = this.level - 1;
+
+    this.currentStats.maxHp = Math.floor(base.maxHp * (1 + (growth.maxHp || 0) * levels)) + bonus.maxHp;
+    this.currentStats.damage = Math.floor(base.damage * (1 + (growth.damage || 0) * levels)) + bonus.damage;
+    this.currentStats.armor = Math.floor(base.armor * (1 + (growth.armor || 0) * levels)) + bonus.armor;
+    this.currentStats.speed = base.speed * SPEED_SCALE_FACTOR + bonus.speed;
+    this.currentStats.hp = this.currentStats.maxHp;
+
+    // A crit chance above 100% cannot mean anything, so that one stays
+    // bounded. Every other stat is free to grow.
+    this.criticalChance = Math.min(1, base.criticalChance + (growth.criticalChance || 0) * levels);
+
+    // Keep the base entity's copies in step - the health bar reads maxHp.
+    this.maxHp = this.currentStats.maxHp;
+    this.damage = this.currentStats.damage;
+    this.armor = this.currentStats.armor;
+    this.speed = this.currentStats.speed;
+
     this.hp = Math.min(this.hp, this.currentStats.maxHp);
+  }
+
+  // Add a permanent bonus from a pickup. Bonuses live in their own pool so
+  // that levelling up - which recomputes the derived stats from the build's
+  // base values - does not throw them away.
+  addBonus(stat, amount) {
+    if (this.bonusStats[stat] === undefined) return;
+    this.bonusStats[stat] += amount;
+    this.calculateDerivedStats();
   }
 
   getDamage() {
@@ -76,6 +93,9 @@ class Player extends Entity {
       this.shield -= shieldAbsorb;
       amount -= shieldAbsorb;
     }
+    // Armor reduces damage. The reduction is capped at 75% so that armor
+    // can never make the player invulnerable - past that point the armor
+    // number keeps growing but stops adding anything.
     const reduction = Math.min(0.75, this.currentStats.armor * 0.015);
     const actualDamage = amount * (1 - reduction);
     this.hp -= actualDamage;
@@ -86,7 +106,7 @@ class Player extends Entity {
   }
 
   heal(amount) { this.hp = Math.min(this.hp + amount, this.currentStats.maxHp); }
-  addShield(amount) { this.shield = Math.min(this.shield + amount, STAT_CAPS.maxShield); }
+  addShield(amount) { this.shield += amount; }
   activateAbility(abilityName) { return this.abilities.activate(abilityName); }
 
   getCooldown(abilityName) {
@@ -187,8 +207,10 @@ class Player extends Entity {
     ctx.globalAlpha = 1;
     this.drawHealthBar(ctx, center.x, this.y - 10, 40, 6);
     if (this.shield > 0) {
+      // The bar is scaled against the health pool, so it stays meaningful
+      // as both the shield and the max HP grow.
       ctx.fillStyle = '#4444ff';
-      ctx.fillRect(center.x - 20, this.y - 18, 40 * Math.min(this.shield / STAT_CAPS.maxShield, 1), 4);
+      ctx.fillRect(center.x - 20, this.y - 18, 40 * Math.min(this.shield / this.currentStats.maxHp, 1), 4);
     }
     ctx.fillStyle = '#ffffff';
     ctx.font = '10px monospace';
@@ -248,4 +270,4 @@ class Player extends Entity {
   }
 }
 
-export { Player, BUILDS, STAT_GROWTH, STAT_CAPS, SPEED_SCALE_FACTOR };
+export { Player, BUILDS, STAT_GROWTH, SPEED_SCALE_FACTOR };

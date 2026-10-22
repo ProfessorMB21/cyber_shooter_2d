@@ -1,5 +1,76 @@
 # Patch History
 
+## 2026-10-22 - Uncapped Per-Build Stat Growth
+
+### Critical
+- **Pickup bonuses were wiped by every level up.** `calculateDerivedStats()`
+  recomputed `currentStats` from the build's base values, so anything a
+  pickup had added was thrown away on the next level. The glass cannon
+  reports the symptom: its damage is recomputed on every level, so damage
+  pickups never actually raised its damage. Bonuses now live in a separate
+  `bonusStats` pool and are added on top of the derived stats.
+- **The reported "glass cannon cannot exceed 80 damage"** was not a cap.
+  The glass cannon's curve passes through exactly 80 at level 14, and
+  damage pickups were capped at 210 on top of that. There was no 80 cap
+  anywhere in the code. The pickup path was dead, which is what made it
+  look like a ceiling.
+
+### Changed
+- **Stat growth is data-driven and uncapped.** Each build declares a
+  `growth` object in `config/player-builds.js` - which of its stats grow
+  per level, and by what fraction of the base value. `calculateDerivedStats()`
+  is now one generic derivation (`base * (1 + growth * (level - 1)) +
+  bonus`) instead of a `switch` over the build name. A stat that grows
+  keeps growing for the whole run.
+- **The berserker had no level scaling at all** - its damage, HP and armor
+  were identical at level 50 and level 1. It now gains 5% damage per
+  level, alongside the existing rage bonus.
+- **Pickup bonuses are permanent and uncapped.** Damage, speed and shield
+  pickups now go through `player.addBonus()` / `player.addShield()`.
+- **The player's health bar overflowed its own width** from the first level
+  up: it read `Entity.maxHp`, which was never updated when the derived max
+  HP grew. The derived stats now keep it in step.
+
+### Removed
+- `STAT_CAPS` (`config/constants.js`) - `maxSpeed` 300, `maxShield` 150,
+  `maxHp` 1500, `maxDamage` 210. `maxHp` was never enforced anyway.
+- The `MAX_SPEED` / `MAX_SHIELD` / `MAX_DAMAGE` constants in
+  `entities/pickup.js` and their re-exports.
+- The `currentStats.speed = baseStats.speed * SPEED_SCALE_FACTOR` line in
+  `Game.start()` - the derivation owns speed now, and the line would have
+  wiped the speed bonus on the first level up.
+
+### Measured
+
+| Stat | L1 | L14 | L20 | L50 |
+|---|---|---|---|---|
+| Glass cannon damage | 35 | 80 | 101 | 206 |
+| Fighter HP | 350 | 714 | 882 | 1722 |
+| Tank HP | 550 | 1408 | 1804 | 3784 |
+| Tank armor | 45 | 74 | 87 | 155 |
+| Balanced HP | 300 | 534 | 641 | 1182 |
+| Balanced damage | 15 | 26 | 32 | 59 |
+| Balanced armor | 22 | 39 | 47 | 86 |
+| Berserker damage | 18 | 29 | 35 | 62 |
+| Guardian armor | 40 | 92 | 116 | 236 |
+
+### Still bounded
+- The sniper's crit chance stops at 100% - a probability above 100% cannot
+  mean anything.
+- Armor's damage reduction stops at 75%. The cap is on the reduction, not
+  on the stat: guardian armor keeps climbing as a number but stops
+  reducing damage. Removing it would make the player heal when hit.
+
+### Files Modified
+- `config/player-builds.js` - per-build `growth` objects
+- `config/constants.js` - `STAT_CAPS` deleted
+- `config/index.js` - `STAT_CAPS` exports removed
+- `entities/player.js` - generic uncapped derivation, `bonusStats`,
+  `addBonus()`, uncapped `addShield()`, health bar fix
+- `entities/pickup.js` - pickups use `addBonus()` / `addShield()`
+- `core/game.js` - speed line removed
+- `entities.js`, `systems/pickups.js` - stale re-exports removed
+
 ## 2026-10-22 - Render Loop, Pause and Level-Up Fixes
 
 ### Critical

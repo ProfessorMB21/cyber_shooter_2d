@@ -1,7 +1,7 @@
 // Pickup System
 // Re-exports from entities/pickup.js for backward compatibility
 
-import { Pickup, MAX_SPEED, MAX_SHIELD, MAX_DAMAGE } from '../entities/pickup.js';
+import { Pickup } from '../entities/pickup.js';
 
 class PickupManager {
   constructor(game, config) {
@@ -35,4 +35,4 @@ class PickupManager {
   }
 }
 
-export { Pickup, PickupManager, MAX_SPEED, MAX_SHIELD, MAX_DAMAGE };
+export { Pickup, PickupManager };

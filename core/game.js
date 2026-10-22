@@ -2,7 +2,7 @@
 
 import { InputHandler } from '../input.js';
 import { ParticleSystem } from '../systems/particles.js';
-import { Player, BUILDS, SPEED_SCALE_FACTOR } from '../entities/player.js';
+import { Player, BUILDS } from '../entities/player.js';
 import { Enemy } from '../entities/enemy.js';
 import { Boss } from '../entities/boss.js';
 import { Pickup } from '../entities/pickup.js';
@@ -116,7 +116,6 @@ class Game {
     const mult = DIFFICULTIES[this.difficulty];
 
     this.player = new Player(buildName, this.width / 2, this.height - 100);
-    this.player.currentStats.speed = this.player.baseStats.speed * SPEED_SCALE_FACTOR;
 
     // Make game instance available to player for quality settings
     window.gameInstance = this;

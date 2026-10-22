@@ -2,6 +2,91 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Uncapped Per-Build Stat Growth (2026-10-22)
+
+### The reported bug
+"Glass cannon cannot exceed 80 damage."
+
+Measured, there was no 80-damage cap in the code. Three separate things
+produced that number:
+
+- The glass cannon's damage curve passes through **exactly 80 at level 14**
+  (`35 * (1 + 0.10 * 13) = 80.5`, floored to 80). Anything past it came
+  only from the next level up.
+- Damage **pickups** were capped at 210 in total, and the cap was applied
+  to `currentStats.damage`.
+- Every level up recomputed `currentStats.damage` from the build's base
+  value, so **a damage pickup was wiped by the next level up**. The glass
+  cannon is the build whose damage is recomputed on every level, so for it
+  damage pickups contributed nothing lasting.
+
+The pickup path was therefore dead, and the level path was easy to mistake
+for a ceiling.
+
+### What changed
+- `config/player-builds.js`: each build now declares a `growth` object -
+  which of its stats grow per level, and by what fraction of its base
+  value. The `passive` string stays next to it.
+- `entities/player.js`: `calculateDerivedStats()` is now one generic
+  derivation driven by that object - `base * (1 + growth * (level - 1)) +
+  bonus` - instead of a `switch` over the build name. **Nothing is
+  capped.**
+- `entities/player.js`: pickup bonuses live in a separate `bonusStats`
+  pool, so levelling up cannot wipe them. `addBonus(stat, amount)` is the
+  new entry point.
+- `entities/pickup.js`: damage and speed pickups call `addBonus()`. The
+  `MAX_SPEED` / `MAX_SHIELD` / `MAX_DAMAGE` constants are gone.
+- `config/constants.js`: `STAT_CAPS` is deleted outright - `maxSpeed` 300,
+  `maxShield` 150, `maxHp` 1500, `maxDamage` 210. (`maxHp` was never
+  enforced anyway: the tank passed 1800 HP at level 20.)
+- `core/game.js`: the `currentStats.speed = baseStats.speed *
+  SPEED_SCALE_FACTOR` line in `start()` is gone - the derivation owns speed
+  now, and the line would have wiped the speed bonus on the first level
+  up.
+- `entities/player.js`: the player's own health bar read `Entity.maxHp`,
+  which was never updated when the derived max HP grew, so the bar
+  overflowed its own width from the first level up. The derived stats now
+  keep `maxHp` in step.
+
+### Measured
+
+| Stat | L1 | L14 | L20 | L50 |
+|---|---|---|---|---|
+| Glass cannon damage | 35 | 80 | 101 | 206 |
+| Fighter HP | 350 | 714 | 882 | 1722 |
+| Tank HP | 550 | 1408 | 1804 | 3784 |
+| Tank armor | 45 | 74 | 87 | 155 |
+| Balanced HP | 300 | 534 | 641 | 1182 |
+| Balanced damage | 15 | 26 | 32 | 59 |
+| Balanced armor | 22 | 39 | 47 | 86 |
+| Berserker damage | 18 | 29 | 35 | 62 |
+| Guardian armor | 40 | 92 | 116 | 236 |
+
+A glass cannon at level 50 with twenty damage pickups deals 246 - past the
+old 210 cap, which a hundred damage pickups would once have hit and stopped
+at. The shield is uncapped too, and the speed bonus is uncapped.
+
+The **berserker used to have no level scaling at all** - its damage, HP and
+armor were the same at level 50 as at level 1. It now gains 5% damage per
+level.
+
+### What is still bounded, and why
+- **The sniper's crit chance stops at 100%.** A probability above 100%
+  cannot mean anything.
+- **Armor's damage reduction stops at 75%.** The cap is on the reduction,
+  not on the stat: guardian armor keeps climbing past 50 as a number, but
+  past that point it no longer reduces any more damage. Removing the cap
+  would mean a reduction over 100%, which would make the player *heal*
+  when hit.
+
+### Verified
+The headless suite is at 46 assertions, 46 passing. The new ones cover:
+glass cannon damage passing 80 and continuing to grow, damage and speed
+pickups surviving a level up, damage/shield/speed no longer being capped,
+every build's stat matching its declared rate and still growing at level
+50, the sniper's crit chance reaching but not passing 100%, the berserker
+scaling, and the health bar reference tracking the growing max HP.
+
 ## Bug Fix Pass and Quit-to-Menu (2026-10-22)
 
 ### Runaway render loop (critical)

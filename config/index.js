@@ -2,7 +2,6 @@
 
 export {
   SPEED_SCALE_FACTOR,
-  STAT_CAPS,
   STAT_GROWTH,
   SCORE_POINTS,
   PARTICLES
@@ -24,7 +23,6 @@ import { PICKUPS, ITEMS } from './pickups.js';
 import { GAME_SETTINGS } from './game.js';
 import {
   SPEED_SCALE_FACTOR,
-  STAT_CAPS,
   STAT_GROWTH,
   SCORE_POINTS,
   PARTICLES
@@ -33,7 +31,6 @@ import {
 const GAME_CONFIG = {
   ...GAME_SETTINGS,
   SPEED_SCALE_FACTOR,
-  STAT_CAPS,
   STAT_GROWTH,
   builds: PLAYER_BUILDS,
   difficulties: DIFFICULTIES,
