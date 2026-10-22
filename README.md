@@ -123,6 +123,16 @@ place rather than a picture of one.
 | `ESC` | Back to the main menu |
 | Mouse | Click an entry, or APPLY / CANCEL / BACK |
 
+The screen shows two different things, and they are not the same: the
+**cursor** moves with the arrow keys or the mouse, and the option that
+is **in force** is the one marked `ACTIVE`. The line under the title
+(`IN USE: ...`) names both settings that are in force.
+
+The three input schemes are a **row of cards** rather than a list, and
+each card carries a picture of the scheme - the keys that are used lit
+up, the mouse and the crosshair where they apply. The pictures are SVG
+files in `assets/input-schemes/`, so they stay sharp at any size.
+
 ### In game
 | Key | Action |
 |---|---|
@@ -447,8 +457,13 @@ scenes/
   menu.js             Main menu and build/difficulty select
   lobby.js            The online lobby: rooms, callsign, build
   settings.js         Performance profile and input scheme select
+  settings-options.js How the settings screen draws its options
+  scheme-images.js    Loads the SVG picture of an input scheme
   pause.js            Pause overlay
   gameover.js         Results screen
+
+assets/
+  input-schemes/      The three scheme pictures: keyboard, keyboard_mouse, mouse_qer
 
 systems/
   entity.js           Base Entity class (physics, damage, health bar)

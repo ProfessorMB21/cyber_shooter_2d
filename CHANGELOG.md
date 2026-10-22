@@ -2,6 +2,41 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Settings Screen Shows What Is In Force (2026-10-23)
+
+### The settings screen says what is in force
+There were two different things on the screen and only one of them was
+marked: the cursor moved, but nothing said which profile or scheme was
+actually in use. Now:
+
+- The option that is in force carries an `ACTIVE` badge. The cursor
+  keeps its own marker, so the two are not confused for each other.
+- The line under the title reads `IN USE: ...` and names both settings
+  that are in force.
+
+### The input schemes are a row of cards
+The three schemes were a column of text in a list, which is the least
+clear way to choose between them. They are now **three cards in a row**,
+each with a picture of the scheme in it - the keys that are used lit up,
+the mouse and the crosshair where they apply.
+
+The pictures are SVG files in `assets/input-schemes/`, so they stay sharp
+at any size and cost nothing to load. A picture that has not arrived yet
+is replaced by the name of the scheme, so the screen is never blank.
+
+### The back button no longer sits on the hints
+The `BACK` button in the settings panel overlapped the key hints. The
+hints are now two lines on the left of the panel and the button is on
+the right, so they cannot run into each other.
+
+### Files Modified
+- `scenes/settings.js` - the row of cards, the `IN USE` line, the
+  active badge and the panel that no longer overlaps
+- `scenes/settings-options.js` - new: how the options are drawn
+- `scenes/scheme-images.js` - new: loads the SVG pictures
+- `core/settings.js` - the scheme descriptions, shortened to fit a card
+- `assets/input-schemes/*.svg` - new: the three pictures
+
 ## The Menus Are Never Quite Still (2026-10-23)
 
 ### The menus are never still

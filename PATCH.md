@@ -1,5 +1,37 @@
 # Patch History
 
+## 2026-10-23 - The Settings Screen Shows What Is In Force
+
+### New
+- **`assets/input-schemes/*.svg` - the three scheme pictures.** Each one
+  shows the keys the scheme uses, lit, with the mouse and the crosshair
+  where they apply. SVG, so they stay sharp at any size.
+- **The input schemes are a row of cards.** Three cards side by side
+  instead of a column of text, each with its picture, its name and what
+  it does. The cards are clickable.
+- **The option in force is badged.** An `ACTIVE` badge on the profile or
+  the scheme that is in use, and an `IN USE: ...` line under the title.
+- **`scenes/settings-options.js` - how the settings screen draws its
+  options.** Split out of `scenes/settings.js` to keep it inside the
+  project's line limit.
+- **`scenes/scheme-images.js` - the picture loader.** Loads each SVG
+  once and keeps it. A picture that has not arrived is replaced by the
+  name of the scheme.
+
+### Changed
+- `scenes/settings.js` - the card row, the `IN USE` line, the active
+  badge, and the panel that no longer overlaps.
+- `core/settings.js` - the scheme descriptions, shortened to fit a card.
+- `README.md` - the settings screen and the new files in the project
+  structure.
+
+### Fixed
+- **The settings screen did not say what was in force.** The cursor
+  moved, but nothing marked the option that was actually in use.
+- **The back button sat on top of the key hints** in the settings panel.
+  The hints are two lines on the left now and the button is on the
+  right.
+
 ## 2026-10-23 - The Menus Are Never Quite Still
 
 ### New

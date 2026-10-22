@@ -1,7 +1,8 @@
 // Settings Scene - Performance profile and input scheme
 
 import { QUALITY_PRESETS, INPUT_SCHEMES } from '../core/settings.js';
-import { ScreenItems, readMouse, drawButton } from './ui.js';
+import { ScreenItems, readMouse, drawButton, pulse, drawGlowText } from './ui.js';
+import { drawProfileOption, drawSchemeCard } from './settings-options.js';
 
 class SettingsScene {
   constructor(game) {
@@ -16,6 +17,12 @@ class SettingsScene {
     this.hoveredId = null;
   }
 
+  // The clock the screen animates against. It runs whatever the game is
+  // doing, so the screen keeps moving when nothing is being pressed.
+  get time() {
+    return this.game.clock;
+  }
+
   // What the highlighted entry is.
   selected() {
     if (this.selection < this.qualityNames.length) {
@@ -26,19 +33,53 @@ class SettingsScene {
     return { kind: 'scheme', name, label: INPUT_SCHEMES[name].name };
   }
 
+  // Is this the option that is in force right now?
+  //
+  // The cursor and the setting in force are two different things - the
+  // cursor can be on any of them - and the screen shows both.
+  isActive(kind, name) {
+    if (kind === 'quality') return this.game.settings.getQuality() === name;
+    return this.game.settings.getInputScheme() === name;
+  }
+
+  // The two settings that are in force, written out.
+  inUse() {
+    const quality = QUALITY_PRESETS[this.game.settings.getQuality()];
+    const scheme = INPUT_SCHEMES[this.game.settings.getInputScheme()];
+    if (!quality || !scheme) return '';
+    return `${quality.name}  |  ${scheme.name}`;
+  }
+
   // Where everything on the screen is. The drawing and the mouse both work
   // from this, so a click always lands on what is on the screen.
   layout(width, height) {
     this.items.reset();
 
     const boxWidth = 520;
-    const boxHeight = Math.max(38, Math.min(76, (height - 230 - 52 - 40 - 20) / 6));
     const gap = 8;
     const headerHeight = 26;
     const x = width / 2 - boxWidth / 2;
 
-    const contentHeight = 2 * headerHeight + 6 * boxHeight + 5 * gap + 20;
-    const top = Math.max(100, (height - 110 - contentHeight) / 2);
+    // The panel at the bottom, and the room the list has above it.
+    const panelTop = height - 110;
+    const panelHeight = 64;
+
+    // The three input schemes are a row of cards, each one with the
+    // picture of the scheme in it.
+    const cardGap = 20;
+    const cardWidth = Math.max(150, Math.min(280, (width - 280 - 2 * cardGap) / 3));
+    const pictureWidth = cardWidth - 32;
+    const pictureHeight = pictureWidth * 150 / 320;
+    const cardHeight = pictureHeight + 100;
+
+    // The profile boxes take what is left above the cards.
+    const space = panelTop - 20 - 112;
+    const cardsHeight = headerHeight + cardHeight;
+    const boxesHeight = space - cardsHeight - 20 - headerHeight - 2 * gap;
+    const boxHeight = Math.max(30, Math.min(76, Math.floor((boxesHeight - 2 * gap) / 3)));
+
+    const contentHeight = headerHeight + 3 * boxHeight + 2 * gap + 20 + cardsHeight;
+    const top = Math.max(112, (panelTop - 20 - contentHeight) / 2);
 
     const qualityTop = top + headerHeight;
     const qualities = this.qualityNames.map((name, i) => {
@@ -49,17 +90,18 @@ class SettingsScene {
 
     const schemeHeader = qualityTop + this.qualityNames.length * (boxHeight + gap) + 20;
     const schemeTop = schemeHeader + headerHeight;
+    const cardLeft = width / 2 - (3 * cardWidth + 2 * cardGap) / 2;
     const schemes = this.schemeNames.map((name, i) => {
-      const y = schemeTop + i * (boxHeight + gap);
-      this.items.add('scheme', x, y, boxWidth, boxHeight, {
+      const cardX = cardLeft + i * (cardWidth + cardGap);
+      this.items.add('scheme', cardX, schemeTop, cardWidth, cardHeight, {
         index: this.qualityNames.length + i, kind: 'scheme'
       });
-      return { name, y };
+      return { name, x: cardX, y: schemeTop };
     });
 
-    // The panel at the bottom, with the keys and the way back
-    const panelTop = height - 110;
-    const back = { x: width / 2 + 120, y: panelTop + 12, w: 160, h: 36 };
+    // The way back. It is on the right of the panel, and the keys are on
+    // the left, so the two cannot run into each other.
+    const back = { x: width / 2 + 100, y: panelTop + 14, w: 180, h: 36 };
     this.items.add('back', back.x, back.y, back.w, back.h, { kind: 'button' });
 
     // The confirmation, over everything
@@ -75,7 +117,12 @@ class SettingsScene {
       dialog = { x: width / 2 - 300, y: dialogY, w: 600, h: 140 };
     }
 
-    return { qualities, schemes, x, boxWidth, boxHeight, gap, top, qualityTop, schemeHeader, schemeTop, panelTop, dialog, back, apply, cancel };
+    return {
+      qualities, schemes, x, boxWidth, boxHeight, gap, top, qualityTop,
+      schemeHeader, schemeTop, panelTop, panelHeight, dialog, back, apply, cancel,
+      cardWidth, cardHeight, cardGap, pictureWidth, pictureHeight,
+      qualityCount: this.qualityNames.length
+    };
   }
 
   update(input) {
@@ -148,41 +195,64 @@ class SettingsScene {
     // the game loop before the scene is rendered. Filling the canvas here
     // would paint over both of them.
 
-    // Title
-    ctx.fillStyle = '#0f0';
-    ctx.font = 'bold 48px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('GAME SETTINGS', width / 2, 70);
+    // The title breathes - the glow moves, the letters do not.
+    drawGlowText(ctx, 'GAME SETTINGS', width / 2, 70, {
+      blur: 6 + pulse(this.time, 1.1) * 22
+    });
 
     const layout = this.layout(width, height);
 
     // The two groups
     ctx.fillStyle = '#888';
     ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
     ctx.fillText('PERFORMANCE PROFILE', width / 2, layout.top + 18);
     ctx.fillText('INPUT SCHEME', width / 2, layout.schemeHeader + 18);
 
+    // What is in force right now. The badge on the option says it too,
+    // but this is the one line that answers it without hunting.
+    ctx.fillStyle = '#0ff';
+    ctx.font = '13px monospace';
+    ctx.fillText('IN USE:  ' + this.inUse(), width / 2, 95);
+
     layout.qualities.forEach(({ name }, i) => {
       const preset = QUALITY_PRESETS[name];
-      this.drawOption(ctx, layout, width, i, preset.name, preset.description);
+      drawProfileOption(ctx, layout, {
+        width,
+        index: i,
+        title: preset.name,
+        description: preset.description,
+        selected: i === this.selection,
+        active: this.isActive('quality', name),
+        time: this.time
+      });
     });
 
-    layout.schemes.forEach(({ name }, i) => {
+    layout.schemes.forEach(({ name, x, y }, i) => {
       const scheme = INPUT_SCHEMES[name];
-      this.drawOption(ctx, layout, width, this.qualityNames.length + i, scheme.name, scheme.description);
+      drawSchemeCard(ctx, layout, {
+        x, y, id: name, scheme,
+        selected: this.qualityNames.length + i === this.selection,
+        active: this.isActive('scheme', name),
+        time: this.time
+      });
     });
 
     // The panel at the bottom
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(width / 2 - 300, layout.panelTop, 600, 60);
+    ctx.fillRect(width / 2 - 300, layout.panelTop, 600, layout.panelHeight);
     ctx.strokeStyle = '#0f0';
     ctx.lineWidth = 2;
-    ctx.strokeRect(width / 2 - 300, layout.panelTop, 600, 60);
+    ctx.strokeRect(width / 2 - 300, layout.panelTop, 600, layout.panelHeight);
 
+    // The keys, on the left of the panel. The button is on the right, so
+    // the text cannot end up underneath it.
     ctx.fillStyle = '#0f0';
     ctx.font = 'bold 14px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('▲ UP/DOWN ▼  Select | [SPACE] Confirm | [ESC] Back', width / 2 - 60, layout.panelTop + 36);
+    ctx.textAlign = 'left';
+    ctx.fillText('▲ UP/DOWN ▼  Select', width / 2 - 280, layout.panelTop + 24);
+    ctx.fillText('[SPACE] Confirm     [ESC] Back', width / 2 - 280, layout.panelTop + 46);
+
     drawButton(ctx, { ...layout.back, label: 'BACK (ESC)', hovered: this.hoveredId === 'back' });
 
     // The confirmation
@@ -190,7 +260,7 @@ class SettingsScene {
       const d = layout.dialog;
       ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
       ctx.fillRect(d.x, d.y, d.w, d.h);
-      ctx.strokeStyle = '#0f0';
+      ctx.strokeStyle = `rgba(0, 255, 0, ${(0.5 + pulse(this.time, 2.4) * 0.5).toFixed(2)})`;
       ctx.lineWidth = 3;
       ctx.strokeRect(d.x, d.y, d.w, d.h);
 
@@ -206,40 +276,6 @@ class SettingsScene {
       drawButton(ctx, { ...layout.apply, label: 'APPLY', hovered: this.hoveredId === 'apply' });
       drawButton(ctx, { ...layout.cancel, label: 'CANCEL', hovered: this.hoveredId === 'cancel' });
     }
-  }
-
-  // One option box. The profile that is on and the scheme that is on are
-  // marked, so the player can see what is in force.
-  drawOption(ctx, layout, width, index, title, description) {
-    const isSelected = index === this.selection;
-    const x = layout.x;
-    const step = layout.boxHeight + layout.gap;
-    const y = index < this.qualityNames.length
-      ? layout.qualityTop + index * step
-      : layout.schemeTop + (index - this.qualityNames.length) * step;
-
-    if (isSelected) {
-      ctx.fillStyle = '#0f0';
-      ctx.fillRect(x, y, layout.boxWidth, layout.boxHeight);
-      ctx.fillStyle = '#000';
-    } else {
-      ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(x, y, layout.boxWidth, layout.boxHeight);
-      ctx.fillStyle = '#444';
-    }
-
-    ctx.strokeStyle = isSelected ? '#0f0' : '#666';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, layout.boxWidth, layout.boxHeight);
-
-    ctx.fillStyle = isSelected ? '#000' : '#0f0';
-    ctx.font = isSelected ? 'bold 20px monospace' : '18px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(title, width / 2, y + layout.boxHeight / 2 - 4);
-
-    ctx.fillStyle = isSelected ? '#333' : '#888';
-    ctx.font = '13px monospace';
-    ctx.fillText(description, width / 2, y + layout.boxHeight / 2 + 18);
   }
 }
 

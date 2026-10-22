@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="150" viewBox="0 0 320 150">
+  <title>Mouse and QER - the mouse moves and aims, the click shoots, Q and E are the abilities</title>
+
+  <rect width="320" height="150" fill="#0a0a1a"/>
+
+  <!-- the mouse: it moves, it aims and the click shoots -->
+  <rect x="30" y="30" width="60" height="90" rx="28" fill="#20203a" stroke="#0f0" stroke-width="2"/>
+  <line x1="60" y1="30" x2="60" y2="56" stroke="#0f0" stroke-width="2"/>
+  <rect x="36" y="42" width="18" height="10" rx="5" fill="#0f0"/>
+  <rect x="62" y="42" width="18" height="10" rx="5" fill="#2a2a45"/>
+
+  <!-- it moves in every direction -->
+  <g fill="#0f0">
+    <path d="M 54 22 L 60 10 L 66 22 Z"/>
+    <path d="M 54 128 L 60 140 L 66 128 Z"/>
+    <path d="M 22 69 L 10 75 L 22 81 Z"/>
+    <path d="M 98 69 L 110 75 L 98 81 Z"/>
+  </g>
+
+  <!-- Q and E: the two abilities -->
+  <rect x="160" y="40" width="56" height="56" rx="6" fill="#0f0" stroke="#7dfc7d" stroke-width="2"/>
+  <rect x="232" y="40" width="56" height="56" rx="6" fill="#0f0" stroke="#7dfc7d" stroke-width="2"/>
+  <g font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle" fill="#062008">
+    <text x="188" y="77">Q</text>
+    <text x="260" y="77">E</text>
+  </g>
+  <g font-family="monospace" font-size="9" text-anchor="middle" fill="#8a8aa8">
+    <text x="188" y="110">1st ability</text>
+    <text x="260" y="110">2nd ability</text>
+  </g>
+  <line x1="120" y1="75" x2="150" y2="68" stroke="#0f0" stroke-width="1" stroke-dasharray="3 3"/>
+
+  <text x="160" y="140" font-family="monospace" font-size="8" text-anchor="middle" fill="#8a8aa8">click shoots   Q / E abilities</text>
+</svg>

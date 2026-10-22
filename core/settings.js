@@ -51,7 +51,7 @@ const QUALITY_PRESETS = {
 const INPUT_SCHEMES = {
   keyboard: {
     name: 'Keyboard Only',
-    description: 'WASD moves, SPACE shoots, 1 and 2 are the abilities',
+    description: 'WASD moves, SPACE shoots, 1 and 2 fire',
     move: 'keyboard',
     aim: 'keyboard',
     shoot: 'space',
@@ -59,7 +59,7 @@ const INPUT_SCHEMES = {
   },
   keyboard_mouse: {
     name: 'Keyboard + Mouse',
-    description: 'WASD moves, the mouse aims, click shoots, 1 and 2 are the abilities',
+    description: 'WASD moves, the mouse aims, click shoots, 1 and 2 fire',
     move: 'keyboard',
     aim: 'mouse',
     shoot: 'mouse',
@@ -67,7 +67,7 @@ const INPUT_SCHEMES = {
   },
   mouse_qer: {
     name: 'Mouse + QER',
-    description: 'The mouse moves and aims, click shoots, Q and E are the abilities',
+    description: 'The mouse moves and aims, click shoots, Q and E fire',
     move: 'mouse',
     aim: 'mouse',
     shoot: 'mouse',
