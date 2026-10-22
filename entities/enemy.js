@@ -8,6 +8,22 @@ import { ENEMY_TYPES } from '../config/index.js';
 const SHOOTER_RETREAT_RANGE = 200;
 const SHOOTER_RETREAT_FACTOR = 2;
 
+// How long an enemy sticks with the player it has picked.
+//
+// The target is re-picked on a timer instead of every frame. Which player
+// is the nearest one changes all the time in a run with two of them - over
+// a forty second run it changed about a hundred and thirty times - and an
+// enemy that changes its mind that often never presses either of them.
+// Holding on for a moment cuts the changes by two thirds.
+const TARGET_LOCK_TIME = 1.5;
+
+// The pause between two bites from the same enemy.
+const CONTACT_COOLDOWN = 0.5;
+
+// What a bite costs, as a fraction of the enemy's damage. Running into a
+// ship hurts, but not as much as being shot by it.
+const CONTACT_DAMAGE_SCALE = 0.25;
+
 class Enemy extends Entity {
   constructor(type, x, y, difficultyMultiplier = 1) {
     const config = ENEMY_TYPES[type] || ENEMY_TYPES.grunt;
@@ -33,14 +49,37 @@ class Enemy extends Entity {
     this.shoots = config.shoots || false;
     this.shootCooldown = 0;
 
+    // The player this enemy is going for, and how long it holds on to it.
+    this.target = null;
+    this.targetTimer = 0;
+    // How long until this enemy can bite again.
+    this.contactCooldown = 0;
+
     // Animation
     this.pulse = 0;
     this.hitFlash = 0;
   }
 
+  // The player this enemy is chasing.
+  //
+  // It keeps the one it has for a moment, so that in a run with two
+  // players it presses one of them instead of swaying between the two and
+  // reaching neither.
+  pickTarget(center, targets, deltaTime) {
+    this.targetTimer -= deltaTime;
+    const holding = this.target && !this.target.dead &&
+      (Array.isArray(targets) ? targets.includes(this.target) : targets === this.target);
+    if (holding && this.targetTimer > 0) return this.target;
+
+    this.targetTimer = TARGET_LOCK_TIME;
+    this.target = nearestTo(center.x, center.y, targets);
+    return this.target;
+  }
+
   // `targets` is the list of players in the run, or a single player. The
-  // enemy goes after the nearest one, which is what makes a shared world
-  // work: whoever is closest is the one being chased.
+  // enemy goes after the nearest one - that is what makes a shared world
+  // work, whoever is closest is the one being chased - and keeps that
+  // choice for a moment at a time.
   update(deltaTime, targets, canvasWidth, canvasHeight) {
     if (this.dead) return false;
 
@@ -49,7 +88,7 @@ class Enemy extends Entity {
 
     // Calculate direction to player
     const center = this.getCenter();
-    const player = nearestTo(center.x, center.y, targets);
+    const player = this.pickTarget(center, targets, deltaTime);
     if (!player) return true;
 
     const playerCenter = player.getCenter ? player.getCenter() : { x: player.x, y: player.y };
@@ -95,19 +134,34 @@ class Enemy extends Entity {
     this.clampToBounds(canvasWidth, canvasHeight);
 
     // Shooting - more aggressive (reduced cooldown)
+    let shot = false;
     if (this.shoots) {
       this.shootCooldown -= deltaTime;
       if (this.shootCooldown <= 0 && distance < 450) { // Shooting range
         this.shootCooldown = 1.75; // Reduced cooldown from 2 to 1
-        return { action: 'shoot', target: player };
+        shot = true;
       }
     }
 
-    // Contact damage
-    if (this.collidesWithCircle(playerCenter.x, playerCenter.y, 20)) {
-      player.takeDamage(this.damage * deltaTime);
+    // Contact damage.
+    //
+    // A bite is a real hit and not a trickle. The old code scaled the
+    // damage by the frame time, which the invulnerability window then
+    // swallowed: an enemy could sit on a player for a second and cost it
+    // a fraction of a health point, which is why the wingman in a
+    // dualist run was never in any danger.
+    this.contactCooldown = Math.max(0, this.contactCooldown - deltaTime);
+    let hit = null;
+    if (this.contactCooldown <= 0 && this.collidesWithCircle(playerCenter.x, playerCenter.y, 20)) {
+      const landed = player.takeDamage(this.damage * CONTACT_DAMAGE_SCALE);
+      this.contactCooldown = CONTACT_COOLDOWN;
+      if (landed > 0) hit = { target: player, damage: landed };
     }
 
+    // An enemy can shoot and bite in the same frame, so the result carries
+    // both: `action` is what the world has to do about the shooting, and
+    // `hit` says that somebody was bitten.
+    if (shot || hit) return { action: shot ? 'shoot' : null, target: player, hit };
     return true;
   }
 

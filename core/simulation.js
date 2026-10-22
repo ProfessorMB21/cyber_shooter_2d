@@ -204,6 +204,9 @@ class Simulation {
     this.enemies = this.enemies.filter(e => {
       const result = e.update(deltaTime, this.players, this.worldWidth, this.worldHeight);
       if (result?.action === 'shoot') this.enemyShoot(e, result.target);
+      // Somebody was bitten. The screen shakes for it, whoever it was -
+      // the wingman being in danger is worth showing.
+      if (result?.hit) this.addShake(3);
       return !e.dead;
     });
 

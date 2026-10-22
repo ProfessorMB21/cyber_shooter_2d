@@ -1,5 +1,36 @@
 # Patch History
 
+## 2026-10-23 - The Wingman Is A Target
+
+### Fixed
+- **The enemies never got through to the wingman.** The targeting was
+  always right - an enemy goes after the nearest living player - but the
+  chase never ended in anything. A bite was `damage * deltaTime`, a third
+  of a health point, and the invulnerability window after a landed hit
+  swallowed the rest. A bite is now a quarter of the enemy's damage, with
+  half a second between two bites from the same enemy.
+- **The AI kept the enemies at arm's length.** It backed off inside 55% of
+  its range with a weight of 0.9 and panicked away from anything within
+  120 pixels with a weight of 1.6, so the enemies could never reach it.
+  It now backs off inside half its range with a weight of 0.5 and panics
+  away from an enemy within 70 pixels with a weight of 1.0.
+- **The enemies changed their mind every frame.** Which player is the
+  nearest one changes all the time in a run with two of them. The enemy
+  now keeps the player it picked for one and a half seconds, which cuts
+  the changes by two thirds.
+
+### New
+- **A bite shakes the screen.** Three pixels, whoever was bitten - the
+  wingman being in danger is worth showing.
+
+### Changed
+- `entities/enemy.js` - the target lock, the bite, and the result of an
+  update now says whether somebody was bitten.
+- `core/simulation.js` - the screen shake for a bite.
+- `systems/ai.js` - how far the AI backs off and when it panics.
+- `README.md` - which player an enemy goes for, what a bite costs, the
+  AI's distances, and the difficulty multipliers that are not applied.
+
 ## 2026-10-23 - The Screen Shake Can Be Seen
 
 ### Fixed

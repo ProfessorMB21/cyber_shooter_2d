@@ -2,6 +2,66 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Wingman Is A Target (2026-10-23)
+
+### The enemies were going for the nearest player and never reaching anybody
+The targeting was never wrong. An enemy picked the nearest living player
+with `nearestTo()` and chased it, and in a dualist run that was the wingman
+as often as it was the local player. The problem was that the chase did
+not end in anything.
+
+**A bite was a trickle.** The contact damage was `this.damage *
+deltaTime` - a grunt did `25 * 0.0167` damage, a third of a health point.
+The player has a tenth of a second of invulnerability after every landed
+hit, so the next frame's bite was swallowed by it. An enemy could sit on a
+player for a second and cost it a fraction of a health point.
+
+**The AI kept the enemies at arm's length.** The wingman backed off when
+the enemy came inside 55% of its range, with a weight of 0.9, and panicked
+away from anything within 120 pixels with a weight of 1.6. It was so good
+at keeping the enemies at a distance that they could never so much as
+reach it.
+
+### What the game does now
+- **A bite is a hit.** A quarter of the enemy's damage, and no more than
+  one bite every half second per enemy. A grunt that reaches a fighter
+  costs it 4.8 health points.
+- **An enemy keeps its target.** The player it picked is kept for one and
+  a half seconds before the choice is made again, unless that player dies.
+  Which player is nearest changes about a hundred and thirty times in a
+  forty second run; the target the enemy holds changes forty seven times.
+- **The AI fights with its back to the wall.** It backs off inside half its
+  range with a weight of 0.5, and panics away from an enemy within 70
+  pixels with a weight of 1.0.
+- **A bite shakes the screen.** Three pixels, whoever was bitten.
+
+### What it changed
+The wingman in a dualist run now takes real damage. Over a forty second
+run it used to take nothing at all - one health point in five runs - and it
+now takes between 15 and 44.
+
+| 40 second dualist run | Before | After |
+|---|---|---|
+| Damage that lands on the wingman | 0 - 1 | 15 - 44 |
+| Damage that lands on a local player standing still | 74 (it survives) | 368 (it does not) |
+
+One grunt sitting on one player for three seconds:
+
+| | Before | After |
+|---|---|---|
+| Hits | 27 | 6 |
+| Damage | 8.6 | 29 |
+
+The second table is the point of the whole change: a player who stands
+still in a swarm of thirty enemies is now in danger, and one who keeps
+moving is not. Before, standing still only cost 74 health points in forty
+seconds, and the wingman could not be touched at all.
+
+### Files Modified
+- `entities/enemy.js` - the target lock and the bite
+- `core/simulation.js` - the screen shake for a bite
+- `systems/ai.js` - how far the AI backs off and when it panics
+
 ## The Screen Shake Can Be Seen (2026-10-23)
 
 ### The shake was there, and nothing moved

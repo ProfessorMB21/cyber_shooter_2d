@@ -325,6 +325,11 @@ world. It keeps its target for 0.6 seconds at a time so it does not flip
 between two equally close enemies every frame, and a boss wins the
 contest if it is within 700 pixels - a boss is worth more than a grunt.
 
+It backs off when the enemy comes inside half its range, and it panics away
+from an enemy within 70 pixels. Both of those are deliberately weak: an AI
+that keeps its distance cannot be bitten at all, and the wingman has to be
+in danger for a dualist run to be a fight.
+
 ### When it uses an ability
 
 The abilities fire on rules, not on a timer. The rule reads what the AI
@@ -360,6 +365,10 @@ uses it.
 | Hard | x1.4 | x1.4 | x1.4 | x1.5 |
 | Nightmare | x1.8 | x2.0 | x2.0 | x2.5 |
 
+Only the **HP** and the **score** columns are applied. The enemy speed and
+the enemy damage are in `config/difficulties.js` but nothing reads them, so
+a difficulty is a harder enemy rather than a more dangerous one.
+
 ## Enemies
 
 | Type | HP | Damage | Speed | XP | Notes |
@@ -372,6 +381,23 @@ uses it.
 
 At most 30 enemies are on screen at once. The spawn batch scales from 10 up
 to 25 enemies as the run goes on.
+
+### Which player an enemy goes for
+An enemy goes after the player nearest to it. The choice is not made every
+frame: the enemy keeps the player it has picked for one and a half seconds
+before it looks again, unless that player dies. Which player is the nearest
+one changes all the time in a run with two of them - over a forty second run
+it changed about a hundred and thirty times - and an enemy that changes its
+mind that often never presses either of them. Holding on for a moment cuts
+the changes by two thirds.
+
+### A bite is a hit
+An enemy that reaches a player does damage to it: a quarter of the enemy's
+damage, and no more than one bite every half second. It used to be scaled by
+the frame time instead, so an enemy could sit on a player for a second and
+cost it a fraction of a health point - the invulnerability window swallowed
+the rest. The wingman in a dualist run was never in any danger because of
+it, and neither was anybody else who kept moving.
 
 ## Bosses
 
@@ -549,6 +575,14 @@ running game. They are candidates for deletion.
 - `config/constants.js` exports `PARTICLES` and `STAT_GROWTH`, which nothing
   reads.
 - `GAME_SETTINGS.TITLE` still says "Simple Claude Game".
+- `DIFFICULTIES.enemyDamage` and `DIFFICULTIES.enemySpeed` are never
+  applied. A difficulty scales the health of the enemies and the score, and
+  nothing else.
+- The speeds in `config/enemy-types.js` are not the speeds the enemies
+  move at. The movement code treats the speed as an acceleration and the
+  friction eats most of it, so a grunt moves at about 75 pixels a second
+  rather than the 120 in the table above, and a player who keeps moving is
+  hard for any of them to catch.
 
 ## Development
 

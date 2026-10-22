@@ -30,6 +30,8 @@ const ABILITY_RULES = {
   'DASH': (c) => (c.closestEnemyDistance < 95 && c.hpPercent < 0.6) || c.surrounding >= 3,
   'OVERLOAD': (c) => c.nearby >= 2 || (c.hpPercent < 0.5 && !!c.target),
   'TELEPORT': (c) => c.hpPercent < 0.35 || c.surrounding >= 3,
+  // The shield is a panic button: it goes up when an enemy is on top of
+  // the AI, before the damage lands, not after.
   'SHIELD': (c) => c.hpPercent < 0.6 || c.closestEnemyDistance < 80,
   'GROUND SLAM': (c) => c.nearby >= 3,
   'ADRENALINE RUSH': (c) => (c.targetDistance > 380 && c.hpPercent > 0.5) || c.hpPercent < 0.4,
@@ -189,21 +191,25 @@ class AIController {
       if (targetDistance > range) {
         // Close the distance
         add(ux, uy, this.config.aggression);
-      } else if (targetDistance < range * 0.55) {
-        // Too close - back off
-        add(-ux, -uy, 0.9);
+      } else if (targetDistance < range * 0.5) {
+        // Too close - back off, but not far. Backing off hard enough to
+        // keep the enemy at arm's length made the AI untouchable: the
+        // enemies could never so much as reach it.
+        add(-ux, -uy, 0.5);
       }
       // Circle the target
       add(-uy * this.strafeSign, ux * this.strafeSign, this.config.strafe);
     }
 
-    // Keep away from the enemies that are on top of it
+    // Get away from an enemy that is on top of it. This is a panic, not a
+    // standing rule - it has to be weak enough that the AI still fights
+    // with its back to the wall.
     for (const enemy of game.enemies) {
       if (enemy.dead) continue;
       const distance = player.distanceTo(enemy);
-      if (distance < 120 && distance > 0) {
+      if (distance < 70 && distance > 0) {
         const ec = enemy.getCenter();
-        add((center.x - ec.x) / distance, (center.y - ec.y) / distance, (1 - distance / 120) * 1.6);
+        add((center.x - ec.x) / distance, (center.y - ec.y) / distance, (1 - distance / 70) * 1.0);
       }
     }
 
