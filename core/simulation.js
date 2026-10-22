@@ -178,6 +178,8 @@ class Simulation {
     if (this.comboTimer <= 0) this.combo = 0;
 
     for (const player of this.players) {
+      // A player who is out of the run does not move and does not shoot.
+      if (player.dead) continue;
       player.update(deltaTime, this.inputFor(player, inputs), this.worldWidth, this.worldHeight);
     }
 
@@ -186,6 +188,7 @@ class Simulation {
     for (const player of this.players) player.updateCooldownAura(this.players);
 
     for (const player of this.players) {
+      if (player.dead) continue;
       const input = this.inputFor(player, inputs);
       if (input.shoot && player.shootCooldown <= 0) this.combat.playerShoot(player, input.aim);
       if (input.ability1) this.combat.activateSkill(0, player, input);

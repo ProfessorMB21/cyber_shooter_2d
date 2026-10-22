@@ -64,6 +64,7 @@ async function init() {
       game.width = newWidth;
       game.height = newHeight;
       game.updateWorldBounds();
+      game.updateWorldTransform();
       if (game.particles && game.particles.resize) {
         game.particles.resize(newWidth, newHeight);
       }

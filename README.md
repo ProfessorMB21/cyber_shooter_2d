@@ -58,6 +58,22 @@ environment.
 | `SPACE` | Start the run |
 | `ESC` | Back to the build select |
 
+### The online lobby
+| Key | Action |
+|---|---|
+| `UP` / `DOWN` | Choose a room |
+| `SPACE` | Join the chosen room |
+| `C` | Create a room |
+| `ESC` | Back to the main menu |
+
+### In a room
+| Key | Action |
+|---|---|
+| `UP` / `DOWN` | Choose your callsign |
+| `LEFT` / `RIGHT` | Choose your build |
+| `ENTER` | Start the run |
+| `ESC` | Leave the room |
+
 ### Settings
 | Key | Action |
 |---|---|
@@ -98,6 +114,7 @@ picks one.
 |---|---|---|
 | Single Player | 1 | On your machine |
 | Dualist | 2 - you and an AI wingman | On your machine |
+| Multiplayer | 1 - 5, over the network | On the server |
 
 ### Dualist
 You and a wingman fly the same field. The wingman is a full player: it
@@ -113,6 +130,37 @@ about the rate one player would level up at.
 A panel in the top right lists the other players - their name, their level
 and their health - and every player but your own has a name tag over their
 ship.
+
+### Multiplayer
+Up to five players in one room, over the network. It needs the server:
+
+```bash
+npm start          # node server/index.js
+```
+
+The server is the authority. **One** world is simulated - on the server -
+and the clients send their input and are sent snapshots of what happened.
+That is what keeps everybody looking at the same fight: if each client
+simulated its own copy, they would drift apart within a second or two.
+
+- The world ticks at 60 Hz. The snapshots go out at 20 Hz, because nobody
+  can see the difference and the bandwidth is real.
+- The client draws the world one snapshot behind and interpolates between
+  the two most recent ones, so the movement is smooth.
+- The shared world is 1280x720. Every client draws it scaled to fit its own
+  window, so the field is the same for everybody.
+- A client's input goes stale after half a second without a refresh, so a
+  client that stalls stops moving rather than running on forever.
+- When the last player in a room dies, the run is over and the room goes
+  back to being a lobby.
+
+The client never simulates the world. The snapshots are turned into the
+real entity objects the renderer already knows how to draw, so the drawing
+code does not know that the run is online.
+
+**There is no pausing in an online run** - the world keeps running on the
+server whether you like it or not. Once you are down you can watch the
+rest of the fight, and `ESC` leaves the room.
 
 ## Builds
 
@@ -315,6 +363,7 @@ package.json          "type": "module" so Node can import the game's modules
 core/
   simulation.js       The world with no rendering: players, enemies, pickups, update
   game.js             The Game class: the Simulation plus a canvas, input and scenes
+  online-world.js     Turns the server's snapshots into the entities the renderer draws
   combat.js           Player shooting, enemy shooting, ability activation
   collision.js        Projectile/enemy/pickup collision tests
   spawning.js         Enemy, boss and pickup spawning
@@ -340,6 +389,7 @@ entities/
 scenes/
   index.js            SceneManager and re-exports
   menu.js             Main menu and build/difficulty select
+  lobby.js            The online lobby: rooms, callsign, build
   settings.js         Performance profile select
   pause.js            Pause overlay
   gameover.js         Results screen
@@ -348,6 +398,7 @@ systems/
   entity.js           Base Entity class (physics, damage, health bar)
   particles.js        Pooled particle system
   ai.js               The friendly AI controller and the per-build rules
+  network.js          The client side of the socket to the server
 
 config/
   index.js            Re-exports every config module
@@ -394,6 +445,11 @@ running game. They are candidates for deletion.
   world; they never simulate it themselves. The world ticks at 60 Hz and the
   snapshots go out at 20 Hz, because nobody can see the difference between
   the two and the bandwidth is real.
+- **The client draws a snapshot, it does not simulate it.** The snapshots
+  become the real entity objects - the same `Enemy`, `Boss`, `Projectile`
+  and `Pickup` classes the local modes use - so the drawing code is the
+  same in every mode. The positions are interpolated between the two most
+  recent snapshots, which is why the world is drawn a snapshot behind.
 - **Audio**: none. Not implemented.
 - **Mouse**: tracked but unused. Shots travel straight up; aiming is
   keyboard-only.

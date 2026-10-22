@@ -7,9 +7,10 @@
 
 import { InputHandler } from '../input.js';
 import { BUILDS } from '../entities/player.js';
-import { MenuScene, GameOverScene, PauseScene, SettingsScene, SceneManager } from '../scenes/index.js';
+import { MenuScene, GameOverScene, PauseScene, SettingsScene, LobbyScene, SceneManager } from '../scenes/index.js';
 import { AIController } from '../systems/ai.js';
 import { Simulation } from './simulation.js';
+import { OnlineSession } from './online-session.js';
 import { RenderingSystem } from './renderer.js';
 import { VisualEffectsSystem } from './visual-effects.js';
 import { PerformanceMonitor } from './performance.js';
@@ -54,6 +55,25 @@ class Game extends Simulation {
     // One controller per AI player, keyed by player id
     this.aiControllers = new Map();
 
+    // The socket to the multiplayer server and everything a networked run
+    // needs. The lobby opens the socket and the run uses it.
+    this.online = new OnlineSession(this);
+
+    // The client side of a networked run - the snapshots turned into the
+    // entities the renderer draws
+    this.onlineWorld = null;
+
+    // A notice that fades away, for the things worth saying in the middle
+    // of a run
+    this.notice = null;
+    this.noticeTimer = 0;
+
+    // The shared world is a fixed size, whatever the window is. The client
+    // draws it scaled to fit.
+    this.worldScale = 1;
+    this.worldOffsetX = 0;
+    this.worldOffsetY = 0;
+
     // Level tracked at the start of the frame, to detect level-ups
     this.levelAtFrameStart = 1;
     // The same for the other players in the run
@@ -74,6 +94,7 @@ class Game extends Simulation {
     this.sceneManager.register('settings', new SettingsScene(this));
     this.sceneManager.register('gameover', new GameOverScene(this));
     this.sceneManager.register('pause', new PauseScene(this));
+    this.sceneManager.register('lobby', new LobbyScene(this));
     this.sceneManager.switchTo('menu');
 
     // Bind loop
@@ -138,6 +159,41 @@ class Game extends Simulation {
     // NOTE: the animation loop is already running - do NOT schedule it again
   }
 
+  // Start an online run. The world is on the server - this only sets up
+  // the client side of it: the local player, the place the snapshots are
+  // put, and the shape of the screen the world is drawn on.
+  startOnline(room) {
+    this.online.start(room);
+  }
+
+  // The online run is over. The room goes back to being a lobby and so
+  // does the client.
+  endOnlineRun() {
+    this.online.end();
+  }
+
+  // Leave an online run before it is over.
+  leaveOnlineRun() {
+    this.online.leave();
+  }
+
+  // The shared world is a fixed size. The client draws it scaled to fit
+  // the canvas, so everybody sees the same field whatever their window is.
+  updateWorldTransform() {
+    this.online.updateTransform();
+  }
+
+  // The socket to the multiplayer server.
+  get network() {
+    return this.online.network;
+  }
+
+  // Say something in the middle of a run, without stopping it.
+  showNotice(text, duration = 2) {
+    this.notice = text;
+    this.noticeTimer = duration;
+  }
+
   // Abandon the current run and return to the main menu. The Game instance
   // and the animation loop stay alive - only the run state is cleared, so the
   // app never has to be restarted.
@@ -159,6 +215,12 @@ class Game extends Simulation {
     this.allyLevels.clear();
     this.levelUpNotice = null;
     this.levelUpNoticeTimer = 0;
+    this.notice = null;
+    this.noticeTimer = 0;
+    this.onlineWorld = null;
+    this.worldScale = 1;
+    this.worldOffsetX = 0;
+    this.worldOffsetY = 0;
     this.visuals.shakeAmount = 0;
     this.visuals.cameraX = 0;
     this.visuals.cameraY = 0;
@@ -283,6 +345,11 @@ class Game extends Simulation {
               menu.mode = 'dualist';
               menu.menuState = 'wingman_select';
             }
+          } else if (result.action === 'show_lobby') {
+            // An online mode. The lobby picks the build and the callsign,
+            // and the room is on the server.
+            this.state = 'lobby';
+            this.sceneManager.switchTo('lobby');
           } else if (result.action === 'show_settings') {
             this.state = 'settings';
             this.sceneManager.switchTo('settings');
@@ -298,7 +365,7 @@ class Game extends Simulation {
           }
         }
 
-        if (this.state === 'menu' || this.state === 'settings') {
+        if (this.state === 'menu' || this.state === 'settings' || this.state === 'lobby') {
           this.renderMenuScene();
         } else {
           this.sceneManager.render(this.ctx, this.width, this.height, this);
@@ -308,6 +375,16 @@ class Game extends Simulation {
       }
 
       if (this.input.isKeyPressed('escape') || this.input.isKeyPressed('p')) {
+        if (this.mode === 'multiplayer') {
+          // The world keeps running on the server, so there is nothing to
+          // pause. Once the local player is down, ESC leaves the run.
+          if (this.player && this.player.dead) {
+            this.leaveOnlineRun();
+          } else {
+            this.showNotice('AN ONLINE RUN CANNOT BE PAUSED');
+          }
+          return;
+        }
         // The pause scene has to be activated as well - without it the pause
         // menu never receives input and the game cannot be unpaused.
         this.state = 'paused';
@@ -331,6 +408,11 @@ class Game extends Simulation {
     this.updateShake(deltaTime);
     this.updateStars(deltaTime);
 
+    if (this.mode === 'multiplayer') {
+      this.updateOnline(deltaTime);
+      return;
+    }
+
     super.update(deltaTime, this.buildInputs(deltaTime));
 
     this.announceLevelUps();
@@ -338,6 +420,13 @@ class Game extends Simulation {
     if (this.levelUpNoticeTimer > 0) this.levelUpNoticeTimer -= deltaTime;
 
     if (this.player && this.player.dead) this.switchState('gameover');
+  }
+
+  // An online run: the input goes to the server and the snapshots come
+  // back. The world is not simulated here - it is on the server, and it
+  // is the only copy there is.
+  updateOnline(deltaTime) {
+    this.online.update(deltaTime);
   }
 
   // The inputs for this frame: the local player comes from the keyboard,

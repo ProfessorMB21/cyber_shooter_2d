@@ -24,6 +24,11 @@ class RenderingSystem {
 
     // Apply camera shake (shake state lives on the VisualEffectsSystem)
     ctx.save();
+    // The shared world of an online run is a fixed size, so it is drawn
+    // scaled to fit the canvas. In the local modes the scale is 1 and this
+    // does nothing.
+    ctx.translate(this.game.worldOffsetX, this.game.worldOffsetY);
+    ctx.scale(this.game.worldScale, this.game.worldScale);
     ctx.translate(this.game.visuals.cameraX, this.game.visuals.cameraY);
 
     // Draw particles (background)
@@ -40,13 +45,14 @@ class RenderingSystem {
     // Draw the players. There is one of them in a single player run, two in
     // dualist, and up to five online.
     for (const player of this.game.players) {
+      if (player.dead) continue;
       player.draw(ctx);
     }
 
     // A name tag over every player but the local one, so the wingman and
     // the remote players can be told apart at a glance.
     for (const player of this.game.players) {
-      if (player === this.game.player) continue;
+      if (player === this.game.player || player.dead) continue;
       const center = player.getCenter();
       ctx.fillStyle = player.color;
       ctx.font = 'bold 11px monospace';
@@ -113,7 +119,26 @@ class RenderingSystem {
     }
 
     this.renderLevelUpNotice(ctx);
+    this.renderNotice(ctx);
     this.renderRoster(ctx);
+  }
+
+  // A message in the middle of the screen, fading away. It says the things
+  // that are worth saying without stopping the run.
+  renderNotice(ctx) {
+    const game = this.game;
+    if (!game.notice || game.noticeTimer <= 0) return;
+
+    const alpha = Math.min(1, game.noticeTimer / 0.6);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 22px monospace';
+    ctx.fillStyle = '#ff0';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 6;
+    ctx.fillText(game.notice, game.width / 2, game.height * 0.22);
+    ctx.restore();
   }
 
   // The other players in the run. There is one in dualist - the AI

@@ -1,5 +1,62 @@
 # Patch History
 
+## 2026-10-23 - The Online Client
+
+### New
+- **Multiplayer mode is playable.** The main menu is a list of three modes
+  now, and picking Multiplayer opens a lobby instead of the build select.
+- **`scenes/lobby.js` - the lobby.** The room list, the roster, and the
+  two pickers a player fills in before a run: the callsign (up and down)
+  and the build (left and right). `ENTER` starts the run for everybody in
+  the room.
+- **`systems/network.js` - the client side of the socket.** It finds the
+  server through the page's own address, says hello, and hands the
+  messages to whoever is listening for them.
+- **`core/online-world.js` - the snapshots turned into entities.** The
+  server's snapshots become the real `Enemy`, `Boss`, `Projectile` and
+  `Pickup` objects the renderer already knows how to draw, so the drawing
+  code is the same in every mode.
+
+### Changed
+- `config/game-modes.js` - the multiplayer mode: up to five players, and
+  the world runs on the server.
+- `scenes/menu.js` - an online mode opens the lobby.
+- `scenes/index.js` - exports the lobby, and the scene manager tells a
+  scene when it is shown and when it is left. The lobby needs both - it
+  opens a socket when it is shown and closes it when it is left.
+- `core/game.js` - the online run: the input goes to the server, the
+  snapshots come back, and the shared world is drawn scaled to fit the
+  window.
+- `core/renderer.js` - the world transform, the dead players, and a
+  notice that says things in the middle of a run.
+- `core/simulation.js` - a player who is out of the run does not move and
+  does not shoot.
+- `server/rooms.js`, `server/index.js`, `shared/protocol.js` - the
+  callsign, the fuller player snapshot, the latched ability presses, and
+  a check on the build name so a bad one cannot take a room down.
+
+### Notes
+- The client never simulates the world. The server sends snapshots and the
+  client draws them.
+- The world is drawn one snapshot behind and the positions are
+  interpolated between the two most recent ones, so the movement is
+  smooth at 20 snapshots a second.
+- The shared world is 1280x720 and every client draws it scaled to fit its
+  own window.
+- **An online run cannot be paused** - the world keeps running on the
+  server. `ESC` says so, and once you are down it leaves the room.
+
+### Verified
+- A new headless probe starts the real server and drives the real client
+  against it: the menu, the lobby, the connection, the room, the build,
+  the start, the enemies and the projectiles coming back, the world being
+  scaled, the player moving, and the run not throwing. **17 assertions,
+  17 passing.**
+- The existing suite is unchanged: 55 assertions, 55 passing. The mode
+  probe is unchanged: 12 assertions, 12 passing. The performance is
+  unchanged: 253.13 fills per frame against a baseline of 252.81-253.6,
+  one `requestAnimationFrame` callback per frame, no errors.
+
 ## 2026-10-23 - The Multiplayer Server
 
 ### New

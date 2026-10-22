@@ -55,6 +55,9 @@ class MenuScene {
     if (input.isKeyPressed(' ')) {
       const entry = entries[this.modeSelection];
       if (entry.kind === 'settings') return { action: 'show_settings' };
+      // An online mode has no build select - it has a lobby, and the
+      // build is picked there, in the room.
+      if (GAME_MODES[entry.id].online) return { action: 'show_lobby', mode: entry.id };
       return { action: 'show_builds', mode: entry.id };
     }
     if (input.isKeyPressed('s')) {

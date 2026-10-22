@@ -13,6 +13,7 @@ const C2S = {
   JOIN_ROOM: 'join_room',     // { roomId }
   LEAVE_ROOM: 'leave_room',   // {}
   SET_BUILD: 'set_build',     // { build }
+  SET_NAME: 'set_name',       // { name }
   START: 'start',             // {}
   INPUT: 'input',             // { dx, dy, shoot, ability1, ability2, aim }
   PING: 'ping'                // { time }

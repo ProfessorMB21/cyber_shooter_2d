@@ -19,6 +19,13 @@ const GAME_MODES = {
     description: 'You and an AI wingman. Shared kills, shared XP.',
     maxPlayers: 2,
     online: false
+  },
+  multiplayer: {
+    id: 'multiplayer',
+    name: 'Multiplayer',
+    description: 'Up to 5 pilots, online. The server runs the world.',
+    maxPlayers: 5,
+    online: true
   }
 };
 

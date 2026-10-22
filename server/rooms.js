@@ -6,9 +6,17 @@
 // their input and are told what happened.
 
 import { Simulation, EMPTY_INPUT } from '../core/simulation.js';
+import { BUILDS } from '../entities/player.js';
 import {
   TICK_RATE, SNAPSHOT_RATE, MAX_PLAYERS, INPUT_TIMEOUT, WORLD_WIDTH, WORLD_HEIGHT
 } from '../shared/protocol.js';
+
+// A build that does not exist would throw when the world is built, and the
+// throw would take the whole room with it. A client cannot be trusted with
+// this one, so the name is checked here.
+function safeBuild(build) {
+  return BUILDS[build] ? build : 'fighter';
+}
 
 class Room {
   constructor(id) {
@@ -36,10 +44,16 @@ class Room {
     const member = {
       id: playerId,
       name: name,
-      build: build,
+      build: safeBuild(build),
       connection: connection,
       input: EMPTY_INPUT,
-      inputTime: 0
+      inputTime: 0,
+      // The ability presses that have not been used by a tick yet. A press
+      // is a single frame on the wire, and the tick that reads it may not
+      // happen between the frame that sent it and the next one - so it is
+      // latched here and consumed by the next tick. The ability's own
+      // cooldown stops it firing twice.
+      pending: { ability1: false, ability2: false }
     };
     this.members.set(playerId, member);
     return member;
@@ -56,7 +70,14 @@ class Room {
   setBuild(playerId, build) {
     const member = this.members.get(playerId);
     if (!member) return false;
-    member.build = build;
+    member.build = safeBuild(build);
+    return true;
+  }
+
+  setName(playerId, name) {
+    const member = this.members.get(playerId);
+    if (!member) return false;
+    member.name = name;
     return true;
   }
 
@@ -67,10 +88,15 @@ class Room {
       dx: Number(input.dx) || 0,
       dy: Number(input.dy) || 0,
       shoot: !!input.shoot,
-      ability1: !!input.ability1,
-      ability2: !!input.ability2,
+      ability1: false,
+      ability2: false,
       aim: input.aim === null || input.aim === undefined ? null : Number(input.aim)
     };
+    // The ability presses are latched rather than passed straight through.
+    // The client holds them down for a single frame, and the tick that
+    // reads them may not fall between that frame and the next one.
+    if (input.ability1) member.pending.ability1 = true;
+    if (input.ability2) member.pending.ability2 = true;
     member.inputTime = Date.now();
   }
 
@@ -129,7 +155,14 @@ class Room {
       // An input that has gone stale is no input. A client that stalls
       // stops moving rather than running on forever.
       const fresh = (now - member.inputTime) / 1000 < INPUT_TIMEOUT;
-      inputs.set(member.id, fresh ? member.input : EMPTY_INPUT);
+      const input = fresh ? { ...member.input } : { ...EMPTY_INPUT };
+      // Hand the latched ability presses to the world and take them back,
+      // so a press is used exactly once.
+      input.ability1 = input.ability1 || member.pending.ability1;
+      input.ability2 = input.ability2 || member.pending.ability2;
+      member.pending.ability1 = false;
+      member.pending.ability2 = false;
+      inputs.set(member.id, input);
     }
 
     this.simulation.update(deltaTime, inputs);
@@ -185,9 +218,15 @@ class Room {
         y: center.y,
         hp: player.hp,
         maxHp: player.currentStats.maxHp,
+        damage: player.currentStats.damage,
         level: player.level,
+        xp: player.xp,
+        xpToNextLevel: player.xpToNextLevel,
         dead: player.dead,
-        color: player.color
+        color: player.color,
+        // The cooldowns go over as the seconds left on each one, not as
+        // timestamps - the client's clock is not the server's.
+        cooldowns: this.cooldownsLeft(player)
       });
     }
 
@@ -208,6 +247,9 @@ class Room {
       world.bosses.push({
         id: this.idFor(boss),
         type: boss.type || 'boss',
+        // The level is what the client needs to build the same boss, since
+        // the pattern and the stats both come from it.
+        levelIndex: boss.levelIndex,
         x: center.x,
         y: center.y,
         hp: boss.hp,
@@ -240,6 +282,17 @@ class Room {
     }
 
     return world;
+  }
+
+  // The seconds left on each of a player's ability cooldowns.
+  cooldownsLeft(player) {
+    const now = Date.now();
+    const left = {};
+    for (const [key, timestamp] of Object.entries(player.cooldowns)) {
+      const remaining = (timestamp - now) / 1000;
+      if (remaining > 0) left[key] = remaining;
+    }
+    return left;
   }
 
   // The lobby view of the room.
@@ -296,4 +349,4 @@ class RoomManager {
   }
 }
 
-export { Room, RoomManager, TICK_RATE, SNAPSHOT_RATE };
+export { Room, RoomManager, TICK_RATE, SNAPSHOT_RATE, safeBuild };

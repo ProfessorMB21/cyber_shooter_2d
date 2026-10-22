@@ -2,6 +2,78 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Online Client (2026-10-23)
+
+### The feature
+The third game mode is playable: **Multiplayer**, up to five players in one
+room over the network. The main menu is now a list of three modes, and
+picking Multiplayer opens a lobby instead of the build select.
+
+```
+Main menu -> MULTIPLAYER -> the lobby -> a room -> your callsign and build -> play
+```
+
+### The lobby
+- The room list, with the number of players in each room. `C` creates one.
+- In a room: the roster, and the two pickers - your callsign (up and down)
+  and your build (left and right). `ENTER` starts the run for everybody in
+  the room, `ESC` leaves it.
+- The callsigns are picked from a list rather than typed, so the roster
+  stays readable.
+
+### The client never simulates the world
+The server sends snapshots and the client draws them. The snapshots are
+turned into the real entity objects - the same `Enemy`, `Boss`,
+`Projectile` and `Pickup` classes the local modes use - so the drawing
+code does not have to know that the run is online, and the renderer needed
+no changes beyond the world transform.
+
+- The world is drawn one snapshot behind and the positions are
+  interpolated between the two most recent snapshots, so the movement is
+  smooth at 20 snapshots a second.
+- The shared world is 1280x720 and every client draws it scaled to fit its
+  own window, so the field is the same for everybody.
+- The snapshot carries the player's XP, their damage and the seconds left
+  on each of their ability cooldowns, so the HUD is right without the
+  client having to work anything out.
+- A dead player is not drawn, and the roster shows them as `DOWN`.
+
+### Online runs cannot be paused
+The world keeps running on the server whether you like it or not, so `ESC`
+says so instead of pausing. Once you are down you can watch the rest of
+the fight, and `ESC` leaves the room.
+
+### Files Modified
+- `systems/network.js` - new: the client side of the socket
+- `core/online-world.js` - new: the snapshots turned into entities
+- `scenes/lobby.js` - new: the lobby, the room and the two pickers
+- `scenes/index.js` - exports the lobby, and the scene manager tells a
+  scene when it is shown and when it is left
+- `scenes/menu.js` - an online mode opens the lobby
+- `config/game-modes.js` - the multiplayer mode
+- `core/game.js` - the online run, the input that goes to the server and
+  the world transform
+- `core/renderer.js` - the world transform, dead players and the notice
+- `core/simulation.js` - a player who is out of the run does not move and
+  does not shoot
+- `server/rooms.js`, `server/index.js`, `shared/protocol.js` - the callsign,
+  the fuller player snapshot, the latched ability presses and the build
+  name check
+
+### Verified
+A new headless probe starts the real server and drives the real client
+against it: the menu opens the lobby, the client connects and is given an
+id, the room list arrives, it creates a room, the roster shows it, the
+build reaches the server, the run starts, the enemies and the projectiles
+come back from the server, the world is the shared size and is scaled to
+fit, the local player moves when the key is held, and the run does not
+throw. **17 assertions, 17 passing.**
+
+The existing suite is unchanged: 55 assertions, 55 passing. The mode
+probe is unchanged: 12 assertions, 12 passing. The performance is
+unchanged: 253.13 fills per frame against a baseline of 252.81-253.6, one
+`requestAnimationFrame` callback per frame, no errors.
+
 ## The Multiplayer Server (2026-10-23)
 
 ### The feature

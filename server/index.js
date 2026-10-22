@@ -17,7 +17,7 @@ import { join, normalize, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { accept } from './websocket.js';
-import { RoomManager, TICK_RATE, SNAPSHOT_RATE } from './rooms.js';
+import { RoomManager, TICK_RATE, SNAPSHOT_RATE, safeBuild } from './rooms.js';
 import { C2S, S2C, MAX_PLAYERS } from '../shared/protocol.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -164,7 +164,7 @@ function handleMessage(session, message) {
       if (typeof message.name === 'string' && message.name.trim()) {
         session.name = message.name.trim().slice(0, 16).toUpperCase();
       }
-      if (typeof message.build === 'string') session.build = message.build;
+      if (typeof message.build === 'string') session.build = safeBuild(message.build);
       session.send({ t: S2C.WELCOME, playerId: session.id, name: session.name });
       session.send({ t: S2C.ROOMS, rooms: rooms.list() });
       break;
@@ -197,9 +197,19 @@ function handleMessage(session, message) {
 
     case C2S.SET_BUILD:
       if (typeof message.build === 'string') {
-        session.build = message.build;
+        session.build = safeBuild(message.build);
         if (session.room) {
           session.room.setBuild(session.id, session.build);
+          broadcastRoster(session.room);
+        }
+      }
+      break;
+
+    case C2S.SET_NAME:
+      if (typeof message.name === 'string' && message.name.trim()) {
+        session.name = message.name.trim().slice(0, 16).toUpperCase();
+        if (session.room) {
+          session.room.setName(session.id, session.name);
           broadcastRoster(session.room);
         }
       }
