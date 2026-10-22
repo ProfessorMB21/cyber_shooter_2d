@@ -1,5 +1,25 @@
 # Patch History
 
+## 2026-10-23 - The Screen Shake Can Be Seen
+
+### Fixed
+- **The screen shake did not shake.** The amounts the game passed to
+  `addShake()` were fractions of a pixel, so a hit moved the world by
+  half a pixel and nothing could be seen. The amount is now the number
+  of pixels the world may move, and the call sites say what they are
+  worth: 1.5 px for a shot, 4 px for a hit, 6 px for a blast, 9 px for
+  a ground slam, 12 px for a boss dying. The shake is capped at 18 px
+  and settles within a third of a second.
+- **The dead camera helpers are gone.** `applyCamera()` and
+  `resetCamera()` in `core/visual-effects.js` were never called.
+
+### Changed
+- `core/visual-effects.js` - the shake, in pixels, with a cap and a
+  decay that are both in pixels a second.
+- `core/combat.js`, `core/collision.js`, `core/events.js` - the shake
+  amounts, in pixels.
+- `README.md` - the shake in the technical notes.
+
 ## 2026-10-23 - The Settings Screen Shows What Is In Force
 
 ### New

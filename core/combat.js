@@ -34,8 +34,8 @@ class CombatSystem {
     // Muzzle flash effect
     this.game.particles.spawnExplosion(center.x, center.y - 20, 5, '#ffff00', 0.1);
 
-    // Light recoil shake
-    this.game.addShake(0.5);
+    // Light recoil shake, in pixels
+    this.game.addShake(1.5);
 
     // Check for piercing
     const piercing = shooter.nextShotPiercing || false;
@@ -126,7 +126,7 @@ class CombatSystem {
         });
         // Visual effect
         this.game.particles.spawnExplosion(center.x, center.y, 20, '#ff8800', 0.5);
-        this.game.addShake(2);
+        this.game.addShake(9);
         break;
       }
 

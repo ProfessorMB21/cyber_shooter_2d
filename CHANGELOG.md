@@ -2,6 +2,48 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Screen Shake Can Be Seen (2026-10-23)
+
+### The shake was there, and nothing moved
+The screen shake was wired up correctly - the renderer moved the world by
+`cameraX`/`cameraY`, and the game updated it every frame. What it did not
+do was *move*.
+
+`addShake()` was handed amounts between 0.5 and 3, and the offset was
+computed as `(Math.random() - 0.5) * shakeAmount`. That is a fraction of
+a pixel: a hit that asked for a shake moved the world by half a pixel,
+and the biggest shake in the game, the one for a boss dying, moved it by
+one and a half. The effect decayed at 5 units a second, so it was over
+before anyone could see it.
+
+### The amount is now the number of pixels
+`addShake(n)` means *the world may move n pixels in one direction*, and
+the offset is picked afresh every frame, so the screen shivers on the
+spot rather than sliding off in one direction. The amounts at the call
+sites were rewritten to say what they are worth:
+
+| What happened | Before | Now |
+|---|---|---|
+| A shot | 0.5 | 1.5 px |
+| A shot hitting a player | 1 | 4 px |
+| A blast hitting a player | 1.5 | 6 px |
+| An enemy dying | 0.5 | 2.5 px |
+| A ground slam | 2 | 9 px |
+| A boss dying | 3 | 12 px |
+
+The shake is capped at 18 pixels, so nothing can throw the world off the
+screen, and it is given up at 20 pixels a second, so it settles within a
+third of a second.
+
+`applyCamera()` and `resetCamera()` in `core/visual-effects.js` were
+never called by anything. They are gone.
+
+### Files Modified
+- `core/visual-effects.js` - the shake, in pixels
+- `core/combat.js` - the recoil and the ground slam
+- `core/collision.js` - a shot hitting a player
+- `core/events.js` - an enemy dying and a boss dying
+
 ## The Settings Screen Shows What Is In Force (2026-10-23)
 
 ### The settings screen says what is in force

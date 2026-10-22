@@ -531,6 +531,11 @@ running game. They are candidates for deletion.
   drift from the rectangle the mouse actually hits. A click is matched
   against the position the click happened at, not against wherever the
   pointer happens to be when the frame runs.
+- **The screen shake is in pixels.** `visuals.addShake(n)` asks for the
+  world to move up to `n` pixels in either direction, and the offset is
+  picked again every frame so the screen shivers on the spot. The shake
+  is applied to the world only - the starfield and the interface stay
+  put, so the HUD does not jitter when something is hit.
 
 ## Known issues
 

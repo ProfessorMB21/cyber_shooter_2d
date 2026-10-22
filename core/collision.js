@@ -71,10 +71,10 @@ class CollisionSystem {
       if (dx * dx + dy * dy < radius * radius) {
         if (p.aoe) {
           player.takeDamage(p.damage * deltaTime * 5);
-          this.game.addShake(1.5);
+          this.game.addShake(6);
         } else {
           player.takeDamage(p.damage);
-          this.game.addShake(1);
+          this.game.addShake(4);
           p.dead = true;
         }
         break;

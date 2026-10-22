@@ -1,11 +1,20 @@
 // Visual Effects System
 
+// The shake is measured in pixels: how far the world may move in one
+// direction. The amounts the game passes around used to be fractions of a
+// pixel, which is why the shake was in the code and missing from the
+// screen. This is the ceiling - the world never leaves the frame by more
+// than this.
+const SHAKE_MAX_PIXELS = 18;
+
 class VisualEffectsSystem {
   constructor(game) {
     this.game = game;
     this.stars = this.generateStars();
+    // The shake, in pixels.
     this.shakeAmount = 0;
-    this.shakeDecay = 5;
+    // How many pixels of shake are given up every second.
+    this.shakeDecay = 20;
     this.cameraX = 0;
     this.cameraY = 0;
 
@@ -44,16 +53,18 @@ class VisualEffectsSystem {
     ];
   }
 
-  // Trigger screen shake
+  // Trigger screen shake. The amount is in pixels: how far the world may
+  // move in one direction before the shake runs out.
   addShake(amount) {
-    this.shakeAmount = Math.min(this.shakeAmount + amount, 20);
+    this.shakeAmount = Math.min(this.shakeAmount + amount, SHAKE_MAX_PIXELS);
   }
 
-  // Update screen shake
+  // Update screen shake. The offset is picked again every frame, so the
+  // world shivers on the spot instead of sliding off in one direction.
   updateShake(deltaTime) {
     if (this.shakeAmount > 0) {
-      this.cameraX = (Math.random() - 0.5) * this.shakeAmount;
-      this.cameraY = (Math.random() - 0.5) * this.shakeAmount;
+      this.cameraX = (Math.random() * 2 - 1) * this.shakeAmount;
+      this.cameraY = (Math.random() * 2 - 1) * this.shakeAmount;
       this.shakeAmount = Math.max(0, this.shakeAmount - this.shakeDecay * deltaTime);
     } else {
       this.cameraX = 0;
@@ -175,16 +186,6 @@ class VisualEffectsSystem {
     this.drawClouds(ctx);
     this.drawSweep(ctx);
     this.drawStars(ctx);
-  }
-
-  // Apply camera shake to context
-  applyCamera(ctx) {
-    ctx.translate(this.cameraX, this.cameraY);
-  }
-
-  // Reset camera
-  resetCamera(ctx) {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 }
 

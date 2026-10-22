@@ -44,7 +44,7 @@ class EventSystem {
     this.game.particles.spawnExplosion(center.x, center.y, 12, enemy.color);
 
     // Small screen shake on kill
-    this.game.addShake(0.5);
+    this.game.addShake(2.5);
 
     // Random pickup drop (reduced from 10% to 3%)
     if (Math.random() < 0.03) {
@@ -74,7 +74,7 @@ class EventSystem {
     this.game.particles.spawnExplosion(center.x, center.y, 50, '#ff00ff');
 
     // Strong screen shake on boss kill
-    this.game.addShake(3);
+    this.game.addShake(12);
 
     // Guaranteed pickups
     for (let i = 0; i < 3; i++) {
