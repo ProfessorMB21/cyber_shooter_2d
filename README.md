@@ -69,6 +69,17 @@ about it.
 | `S` | Settings |
 | Mouse | Click an entry to open it |
 
+### The menus are never quite still
+The main menu, the build select and the settings screen keep moving
+while nothing is being pressed. The starfield drifts, clouds of colour
+drift behind it, and a band of light crosses the screen every fourteen
+seconds. The title glow breathes, the marker beside the selected entry
+blinks, the outline of the row the cursor is on pulses, and the hint
+line at the bottom fades in and out.
+
+It is the same backdrop the game is drawn over, so the menu looks like a
+place rather than a picture of one.
+
 ### Build / difficulty select
 | Key | Action |
 |---|---|

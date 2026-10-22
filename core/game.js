@@ -89,6 +89,9 @@ class Game extends Simulation {
 
     // Timing
     this.lastTime = performance.now();
+    // A clock that runs whatever the game is doing. The screens animate
+    // against it, so a menu is never quite still.
+    this.clock = 0;
 
     // Build names
     this.buildNames = Object.keys(BUILDS);
@@ -250,9 +253,13 @@ class Game extends Simulation {
 
   // The menu and settings screens draw the starfield background and the
   // ambient particles before the scene itself.
-  renderMenuScene() {
-    this.drawBackground(this.ctx);
-    this.particles.update(1 / 60);
+  //
+  // The backdrop is the animated one - the clouds drift and the stars
+  // move - so the menu looks like the game and not like a picture of it.
+  renderMenuScene(deltaTime = 1 / 60) {
+    this.visuals.updateBackdrop(deltaTime);
+    this.visuals.drawMenuBackdrop(this.ctx);
+    this.particles.update(deltaTime);
     this.particles.draw(this.ctx);
     this.sceneManager.render(this.ctx, this.width, this.height, this.particles);
   }
@@ -281,6 +288,13 @@ class Game extends Simulation {
     requestAnimationFrame(this.loop);
 
     try {
+      // The time since the last frame. It is worked out here, at the
+      // top, so that every branch has it - the menu backdrop and the
+      // screens that sit on it move on the same clock as the world does.
+      const deltaTime = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+      this.lastTime = timestamp;
+      this.clock += deltaTime;
+
       // Monitor performance every frame
       this.perf.update(timestamp);
 
@@ -311,7 +325,7 @@ class Game extends Simulation {
           } else if (result.action === 'quit') {
             // Leave the run for the main menu - the app keeps running
             this.quitToMenu();
-            this.renderMenuScene();
+            this.renderMenuScene(deltaTime);
             this.debug.render(this.ctx);
             return;
           }
@@ -375,7 +389,10 @@ class Game extends Simulation {
         }
 
         if (this.state === 'menu' || this.state === 'settings' || this.state === 'lobby') {
-          this.renderMenuScene();
+          // The starfield moves behind the menus too. A still starfield
+          // makes a menu look like a picture instead of a place.
+          this.updateStars(deltaTime);
+          this.renderMenuScene(deltaTime);
         } else {
           this.sceneManager.render(this.ctx, this.width, this.height, this);
         }
@@ -405,9 +422,6 @@ class Game extends Simulation {
         this.sceneManager.switchTo('pause');
         return;
       }
-
-      const deltaTime = Math.min((timestamp - this.lastTime) / 1000, 0.1);
-      this.lastTime = timestamp;
 
       this.update(deltaTime);
       this.render();

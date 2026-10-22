@@ -2,6 +2,33 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Menus Are Never Quite Still (2026-10-23)
+
+### The menus are never still
+The main menu used to be a picture. The starfield behind it was only
+updated while a run was going, the backdrop was the plain game
+background, and the title sat there with a fixed glow. The menu now
+runs on the same clock as the world does.
+
+- The starfield drifts behind the menus, not just in a run.
+- The backdrop has clouds of colour that sway and a band of light that
+  crosses the screen every fourteen seconds.
+- The title glow breathes, the marker beside the selected entry blinks,
+  the outline of the row the cursor is on pulses, and the hint line
+  fades in and out.
+
+`core/game.js` keeps a clock that advances every frame whatever the game
+is doing, and the time since the last frame is worked out at the top of
+the loop so every branch has it.
+
+### Files Modified
+- `core/visual-effects.js` - the menu backdrop: the clouds, the sweep
+  and the menu's own draw path
+- `core/game.js` - the clock, and the delta at the top of the loop
+- `scenes/menu.js` - the breathing title, the blinking marker, the
+  pulsing rows
+- `scenes/ui.js` - `pulse`, `drawGlowText`, `fitText` and `wrapText`
+
 ## The Mouse And The Input Schemes (2026-10-23)
 
 ### The feature

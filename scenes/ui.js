@@ -87,4 +87,58 @@ function drawButton(ctx, options) {
   ctx.fillText(label, x + w / 2, y + h / 2 + 5);
 }
 
-export { ScreenItems, readMouse, drawButton };
+// A value that breathes between 0 and 1.
+//
+// The screens use it for the things that should never be quite still -
+// a glow, a selection, a hint. It is driven by the game's clock, so it
+// keeps moving when nothing is being pressed.
+function pulse(time, speed = 1.5, phase = 0) {
+  return 0.5 + 0.5 * Math.sin(time * speed + phase);
+}
+
+// Text with a glow around it. The glow breathes, so a title on a menu
+// looks alive without the letters themselves moving.
+function drawGlowText(ctx, text, x, y, options = {}) {
+  const { font = 'bold 48px monospace', color = '#0f0', blur = 20, align = 'center' } = options;
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
+  ctx.fillStyle = color;
+  ctx.font = font;
+  ctx.textAlign = align;
+  ctx.fillText(text, x, y);
+  // Put the glow away, so it does not follow the rest of the screen.
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// The text, cut to fit a box.
+//
+// The font is monospaced, so the width is known from the character count
+// and the font size - there is no need to measure it.
+function fitText(text, maxWidth, fontSize) {
+  const max = Math.floor(maxWidth / (fontSize * 0.6));
+  if (text.length <= max) return text;
+  return text.slice(0, Math.max(1, max - 3)) + '...';
+}
+
+// The text, broken into lines that fit a box.
+function wrapText(text, maxChars) {
+  const lines = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    const next = line ? line + ' ' + word : word;
+    if (next.length > maxChars && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+export {
+  ScreenItems, readMouse, drawButton, pulse, drawGlowText, fitText, wrapText
+};

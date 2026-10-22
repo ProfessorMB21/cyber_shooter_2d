@@ -2,7 +2,7 @@
 
 import { BUILDS } from '../entities/player.js';
 import { DIFFICULTIES, GAME_MODES, DEFAULT_MODE } from '../config/index.js';
-import { ScreenItems, readMouse, drawButton } from './ui.js';
+import { ScreenItems, readMouse, drawButton, pulse, drawGlowText } from './ui.js';
 
 class MenuScene {
   constructor(game) {
@@ -30,6 +30,12 @@ class MenuScene {
     // The clickable parts of the screen, and the one the pointer is on
     this.items = new ScreenItems();
     this.hoveredId = null;
+  }
+
+  // The clock the screen animates against. It runs whatever the game is
+  // doing, so the menu keeps moving when nothing is being pressed.
+  get time() {
+    return this.game.clock;
   }
 
   // The main menu is a list: every mode, then the settings.
@@ -260,15 +266,17 @@ class MenuScene {
     // the game loop before the scene is rendered. Filling the canvas here
     // would paint over both of them.
 
-    // Title
-    ctx.fillStyle = '#0f0';
-    ctx.font = 'bold 48px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('CYBER SHOOTER', width / 2, 100);
+    // The title breathes - the glow moves, the letters do not.
+    drawGlowText(ctx, 'CYBER SHOOTER', width / 2, 100, {
+      blur: 6 + pulse(this.time, 1.1) * 22
+    });
 
     ctx.fillStyle = '#888';
     ctx.font = '20px monospace';
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = 0.6 + pulse(this.time, 0.8) * 0.4;
     ctx.fillText('A Retro Space Shooter', width / 2, 130);
+    ctx.globalAlpha = 1;
 
     if (this.menuState === 'main') {
       this.renderMainMenu(ctx, width, height);
@@ -300,6 +308,14 @@ class MenuScene {
       ctx.fillText(label, width / 2, y + 2);
     });
 
+    // A marker that blinks on the entry the player is on, so the
+    // selection can be found without reading the list.
+    const selectedY = rows[this.modeSelection].y;
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = `rgba(0, 255, 0, ${pulse(this.time, 3) > 0.5 ? 1 : 0.2})`;
+    ctx.fillText('▸', width / 2 - 180, selectedY + 2);
+
     // What the highlighted entry does
     const highlighted = entries[this.modeSelection];
     const mode = highlighted.kind === 'mode' ? GAME_MODES[highlighted.id] : null;
@@ -311,9 +327,13 @@ class MenuScene {
       width / 2, startY + entries.length * 55 + 10
     );
 
+    // The hint breathes, so the screen is never quite still.
+    ctx.globalAlpha = 0.35 + pulse(this.time, 0.9) * 0.5;
     ctx.fillStyle = '#888';
     ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
     ctx.fillText('[UP/DOWN] Choose  [SPACE] Select  [S] Settings  or click', width / 2, height - 40);
+    ctx.globalAlpha = 1;
   }
 
   renderBuildSelect(ctx, width, height) {
@@ -346,6 +366,10 @@ class MenuScene {
       if (selected) {
         ctx.fillStyle = color;
         ctx.fillRect(width / 2 - 100, y - 20, 200, 28);
+        // The outline pulses on the row the player is on.
+        ctx.strokeStyle = `rgba(255, 255, 255, ${(0.3 + pulse(this.time, 2.4) * 0.7).toFixed(2)})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(width / 2 - 100, y - 20, 200, 28);
         ctx.fillStyle = '#000';
       } else {
         ctx.fillStyle = color;
@@ -369,8 +393,10 @@ class MenuScene {
       ctx.fillStyle = selected ? '#0f0' : '#222';
       ctx.fillRect(width / 2 - 150, top, 300, buildRowHeight);
 
-      // Border
-      ctx.strokeStyle = selected ? '#fff' : '#444';
+      // Border. On the row the player is on it pulses.
+      ctx.strokeStyle = selected
+        ? `rgba(255, 255, 255, ${(0.4 + pulse(this.time, 2.4) * 0.6).toFixed(2)})`
+        : '#444';
       ctx.lineWidth = 2;
       ctx.strokeRect(width / 2 - 150, top, 300, buildRowHeight);
 
@@ -426,7 +452,10 @@ class MenuScene {
       ctx.fillStyle = selected ? '#0f0' : '#222';
       ctx.fillRect(width / 2 - 150, top, 300, buildRowHeight);
 
-      ctx.strokeStyle = selected ? '#fff' : '#444';
+      // Border. On the row the player is on it pulses.
+      ctx.strokeStyle = selected
+        ? `rgba(255, 255, 255, ${(0.4 + pulse(this.time, 2.4) * 0.6).toFixed(2)})`
+        : '#444';
       ctx.lineWidth = 2;
       ctx.strokeRect(width / 2 - 150, top, 300, buildRowHeight);
 

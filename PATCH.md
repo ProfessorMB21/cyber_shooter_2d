@@ -1,5 +1,29 @@
 # Patch History
 
+## 2026-10-23 - The Menus Are Never Quite Still
+
+### New
+- **The menus are never still.** The starfield drifts behind the menus,
+  the backdrop has clouds that sway and a band of light that crosses the
+  screen every fourteen seconds, the title glow breathes, the marker
+  blinks and the hint line fades in and out.
+
+### Changed
+- `core/game.js` - a clock that advances every frame whatever the game
+  is doing, and the time since the last frame worked out at the top of
+  the loop so every branch has it.
+- `core/visual-effects.js` - the menu backdrop, and a `drawMenuBackdrop`
+  that the menus use instead of the plain game background.
+- `scenes/menu.js` - the breathing title, the blinking selection
+  marker, the pulsing row outlines and the breathing hint.
+- `scenes/ui.js` - `pulse`, `drawGlowText`, `fitText` and `wrapText`,
+  shared by the screens.
+- `README.md` - the menu animation, under the main menu.
+
+### Fixed
+- **The menu was a still picture.** The starfield was only updated while
+  a run was going, and the menus drew the plain game background.
+
 ## 2026-10-23 - The Mouse And The Input Schemes
 
 ### New
