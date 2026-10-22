@@ -99,6 +99,27 @@ class RenderingSystem {
       // Performance mode: minimal UI
       this.renderUIPerformance(ctx);
     }
+
+    this.renderLevelUpNotice(ctx);
+  }
+
+  // A level-up is announced with a brief notice that fades away, so play is
+  // never interrupted.
+  renderLevelUpNotice(ctx) {
+    const game = this.game;
+    if (!game.levelUpNotice || game.levelUpNoticeTimer <= 0) return;
+
+    // Fade out over the last 0.6 seconds
+    const alpha = Math.min(1, game.levelUpNoticeTimer / 0.6);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 30px monospace';
+    ctx.shadowColor = '#0f0';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = '#0f0';
+    ctx.fillText(game.levelUpNotice, game.width / 2, game.height * 0.3);
+    ctx.restore();
   }
 
   renderUIPerformance(ctx) {

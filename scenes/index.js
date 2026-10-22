@@ -2,7 +2,6 @@
 
 export { MenuScene } from './menu.js';
 export { GameOverScene } from './gameover.js';
-export { LevelUpScene } from './levelup.js';
 export { PauseScene } from './pause.js';
 export { SettingsScene } from './settings.js';
 

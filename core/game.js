@@ -7,7 +7,7 @@ import { Enemy } from '../entities/enemy.js';
 import { Boss } from '../entities/boss.js';
 import { Pickup } from '../entities/pickup.js';
 import { DIFFICULTIES } from '../config/index.js';
-import { MenuScene, GameOverScene, LevelUpScene, PauseScene, SettingsScene, SceneManager } from '../scenes/index.js';
+import { MenuScene, GameOverScene, PauseScene, SettingsScene, SceneManager } from '../scenes/index.js';
 import { CombatSystem } from './combat.js';
 import { SpawningSystem } from './spawning.js';
 import { EventSystem } from './events.js';
@@ -67,7 +67,9 @@ class Game {
 
     // Level tracked at the start of the frame, to detect level-ups
     this.levelAtFrameStart = 1;
-    this.levelUpTimer = null;
+    // Level-up notice - shown briefly, without interrupting play
+    this.levelUpNotice = null;
+    this.levelUpNoticeTimer = 0;
 
     // Timing
     this.lastTime = performance.now();
@@ -96,7 +98,6 @@ class Game {
     this.sceneManager.register('menu', new MenuScene(this));
     this.sceneManager.register('settings', new SettingsScene(this));
     this.sceneManager.register('gameover', new GameOverScene(this));
-    this.sceneManager.register('levelup', new LevelUpScene(this));
     this.sceneManager.register('pause', new PauseScene(this));
     this.sceneManager.switchTo('menu');
 
@@ -137,8 +138,8 @@ class Game {
 
     this.state = 'playing';
     this.lastTime = performance.now();
-    // A pending level-up timer from a previous run must not fire into this one
-    clearTimeout(this.levelUpTimer);
+    this.levelUpNotice = null;
+    this.levelUpNoticeTimer = 0;
     // NOTE: the animation loop is already running - do NOT schedule it again
   }
 
@@ -156,7 +157,6 @@ class Game {
 
   // Reset everything that belongs to a single run
   clearRunState() {
-    clearTimeout(this.levelUpTimer);
     this.player = null;
     this.enemies = [];
     this.bosses = [];
@@ -172,6 +172,8 @@ class Game {
     this.bossSpawned = [];
     this.spawnTimer = 0;
     this.levelAtFrameStart = 1;
+    this.levelUpNotice = null;
+    this.levelUpNoticeTimer = 0;
     this.visuals.shakeAmount = 0;
     this.visuals.cameraX = 0;
     this.visuals.cameraY = 0;
@@ -392,12 +394,20 @@ class Game {
     // re-checking the XP threshold - that would level the player up twice.
     if (this.player.level !== this.levelAtFrameStart) {
       this.levelAtFrameStart = this.player.level;
-      this.switchState('levelup');
-      clearTimeout(this.levelUpTimer);
-      this.levelUpTimer = setTimeout(() => {
-        if (this.state === 'levelup') this.state = 'playing';
-      }, 2000);
+      this.announceLevelUp();
     }
+
+    if (this.levelUpNoticeTimer > 0) this.levelUpNoticeTimer -= deltaTime;
+  }
+
+  // Announce a level-up without interrupting play: a short notice and a
+  // burst of particles, but no overlay and no pause.
+  announceLevelUp() {
+    this.levelUpNotice = `LEVEL UP - LEVEL ${this.player.level}`;
+    this.levelUpNoticeTimer = 1.8;
+    const center = this.player.getCenter();
+    this.particles.spawnExplosion(center.x, center.y, 18, '#0f0');
+    this.particles.spawnText('LEVEL UP', center.x, center.y - 40, '#0f0');
   }
 }
 
