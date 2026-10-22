@@ -1,5 +1,33 @@
 # Cyber Shooter 2D - Graphics & Gameplay Enhancement Plan
 
+## Status (updated 2026-10-22)
+
+**Phase 1 is shipped. Phases 2-4 are mostly still open.**
+
+| Item | Status |
+|---|---|
+| 1.1 UI visual hierarchy | Done |
+| 1.2 Particle variety | Done - 9 types (was 4) |
+| 1.3 Build-specific visuals | Done - extracted to `entities/build-visuals.js` |
+| 2.1 Advanced camera & screen effects | Partly - screen shake only |
+| 2.2 Skill visual feedback | Partly - cooldowns and effects exist, no per-skill identity |
+| 2.3 Enemy variety | Partly - colours and shapes differ, no telegraphs or spawn animations |
+| 2.4 Gameplay juice | Partly - particles on level up, no death animations or XP floaters |
+| 3.x Major features | Not started |
+| 4.1 Performance optimization | Done in the 2026-10-22 fix pass (see CHANGELOG) |
+| 4.2 Audio | Not started |
+| 4.3 UI/UX refinement | Partly |
+
+Two of the plan's assumptions have since changed:
+
+- **The "canvas 2D, no 3D" constraint is under review.** A renderer swap
+  (three.js or PixiJS) is being considered for performance headroom. The
+  current measurement says 253 of the 254 remaining draws per frame use
+  `shadowBlur`, so pre-rendered glow sprites are the cheaper first step.
+- **The 300-line file limit is still in force** and still worth keeping.
+
+---
+
 ## Executive Summary
 
 Your cyber_shooter_2d game has a solid foundation with well-organized modular code, comprehensive game systems, and good visual feedback. This plan identifies strategic improvements across graphics fidelity and gameplay depth while respecting the architectural constraints (vanilla JS, 300-line file limit, canvas-based rendering).
@@ -8,64 +36,47 @@ Your cyber_shooter_2d game has a solid foundation with well-organized modular co
 
 ## PHASE 1: Quick Wins (1-2 days) — High Impact, Low Effort
 
-### 1.1 Enhanced Visual Hierarchy & UI Polish
+### 1.1 Enhanced Visual Hierarchy & UI Polish ✅
 **Priority**: ⭐⭐⭐⭐⭐ Quick Win
 
-**Current State**: Basic text-based UI with functional menu and stats display
+**Shipped**:
+- Framed stat panels in `core/renderer.js` (green border, semi-transparent
+  background)
+- Emoji stat indicators (❤️, ⚔️, 💨, ⭐)
+- Color-coded difficulty menu
+- Build-specific colour tinting and border weight on the selection screen
 
-**Improvements**:
-- Add border/frame effects around UI elements (health bar, shield bar, stats board)
-- Implement visual stat indicators with icons or symbols
-- Color-code difficulty levels visually on menu
-- Add build icons or visual previews on selection screen
-- Enhance combo display with visual scaling/animation
-- Add "level up" visual feedback (flash, particles, sound concept)
-
-**Files to Modify**: 
-- `core/renderer.js` (UI rendering)
-- `scenes/` (menu scene styling)
-
-**Effort**: 2-3 hours | **Code Complexity**: Low | **Performance**: Negligible
+**Still open**:
+- Build icons or visual previews on the selection screen
+- Combo display with visual scaling/animation
+- Level-up feedback is a fading notice and a particle burst - deliberately
+  non-blocking, so it stays out of the way
 
 ---
 
-### 1.2 Expanded Particle Variety
+### 1.2 Expanded Particle Variety ✅
 **Priority**: ⭐⭐⭐⭐ High Impact
 
-**Current State**: 4 particle types (explosion, trail, text, spark)
+**Shipped**: 9 particle types - explosion, trail, spark, text, critical,
+healing, buff, electric, and the pooled spawn helpers
+(`spawnCritical`, `spawnHealing`, `spawnBuff`, `spawnElectric`).
 
-**New Particle Types**:
-- **Slash effects** - When melee/skill hits land (arc trails)
-- **Buff/Debuff indicators** - Visual feedback for active effects
-- **Experience orbs** - Floating XP pickups with collection animation
-- **Critical hit burst** - Special particles for crits
-- **Shield impact** - Distinct particles when shield absorbs damage
-- **Healing pulse** - Expanding circles for heal effects
-- **Electric arcs** - For certain skills/abilities
-
-**Implementation**: Extend Particle class with new types in `systems/particles.js`
-
-**Effort**: 3-4 hours | **Code Complexity**: Low | **Performance**: Moderate (adds ~50-100 particles max)
+**Still open**:
+- Slash effects for skill hits
+- XP orb floaters
+- Shield impact particles
 
 ---
 
-### 1.3 Build-Specific Visual Polish
+### 1.3 Build-Specific Visual Polish ✅
 **Priority**: ⭐⭐⭐⭐ Quality Enhancement
 
-**Current State**: Entities draw basic colored circles with glow
+**Shipped**: all 7 builds draw a distinct decoration, extracted into
+`entities/build-visuals.js` so `entities/player.js` stays small. Skipped
+automatically in Performance mode and when the frame rate drops below
+45 fps.
 
-**Enhancements**:
-- **Fighter**: Draw as compact, armored silhouette with shield indication
-- **Glass Cannon**: Sleeker design with energy arcs around it
-- **Tank**: Larger, more robust visual with visible armor plating
-- **Balanced**: Neutral, modern design
-- **Sniper**: Elongated rifle-like shape with targeting reticle
-- **Berserker**: Aggressive silhouette, rage indicator as red aura
-- **Guardian**: Defensive posture with protective aura
-
-**Implementation**: Enhance entity `draw()` methods in `entities/player.js`
-
-**Effort**: 2-3 hours | **Code Complexity**: Low | **Performance**: Negligible
+---
 
 ---
 
@@ -253,17 +264,21 @@ Your cyber_shooter_2d game has a solid foundation with well-organized modular co
 
 ## PHASE 4: Polish & Optimization (2-3 days) — Refinement
 
-### 4.1 Performance Optimization
+### 4.1 Performance Optimization ✅
 **Priority**: ⭐⭐⭐ Sustainability
 
-**Checks**:
-- Profile particle count (don't exceed ~300 simultaneous)
-- Optimize collision detection (spatial partitioning?)
-- Batch canvas operations where possible
-- Monitor frame rate stability under heavy load
-- Test on lower-end devices
+**Shipped (2026-10-22)**: a headless measurement harness and the fix pass it
+drove. The game was rendering the scene 333 times per frame and the reported
+frame rate was a fiction. Both are fixed and measured - see CHANGELOG.md.
 
-**Implementation**: Performance benchmarking and optimization passes
+**Still open**:
+- 253 of the 254 remaining draws per frame use `shadowBlur`, which is one
+  gaussian blur pass per draw call. Pre-rendered glow sprites would remove
+  nearly all of them.
+- Collision detection is still a linear scan (`core/spatial.js` has a grid
+  index that nothing uses).
+- Batch canvas operations where possible
+- Test on lower-end devices
 
 **Effort**: 2-3 hours | **Code Complexity**: Medium
 
@@ -305,19 +320,19 @@ Your cyber_shooter_2d game has a solid foundation with well-organized modular co
 
 ## Implementation Priority Matrix
 
-| Enhancement | Phase | Effort | Impact | Start When? |
-|---|---|---|---|---|
-| Enhanced UI Visual Hierarchy | 1 | 2h | ⭐⭐⭐⭐ | Immediate |
-| Expanded Particle Variety | 1 | 3h | ⭐⭐⭐⭐ | Immediate |
-| Build-Specific Visuals | 1 | 2h | ⭐⭐⭐⭐ | Immediate |
-| Advanced Camera Effects | 2 | 4h | ⭐⭐⭐⭐⭐ | After Phase 1 |
-| Skill Visual Feedback | 2 | 5h | ⭐⭐⭐⭐ | After Phase 1 |
-| Enemy Visual Upgrade | 2 | 4h | ⭐⭐⭐⭐ | Parallel |
-| Gameplay Juiciness | 2 | 5h | ⭐⭐⭐⭐⭐ | After Phase 1 |
-| Expanded Skills | 3 | 7h | ⭐⭐⭐⭐ | Mid-project |
-| Enemy AI Enhancement | 3 | 6h | ⭐⭐⭐⭐ | Mid-project |
-| Cosmetics/Unlockables | 3 | 5h | ⭐⭐⭐ | Late-project |
-| Boss Evolution | 3 | 6h | ⭐⭐⭐⭐ | Late-project |
+| Enhancement | Phase | Effort | Impact | Start When? | Status |
+|---|---|---|---|---|---|
+| Enhanced UI Visual Hierarchy | 1 | 2h | ⭐⭐⭐⭐ | Immediate | Done |
+| Expanded Particle Variety | 1 | 3h | ⭐⭐⭐⭐ | Immediate | Done |
+| Build-Specific Visuals | 1 | 2h | ⭐⭐⭐⭐ | Immediate | Done |
+| Advanced Camera Effects | 2 | 4h | ⭐⭐⭐⭐⭐ | After Phase 1 | Open |
+| Skill Visual Feedback | 2 | 5h | ⭐⭐⭐⭐ | After Phase 1 | Partly |
+| Enemy Visual Upgrade | 2 | 4h | ⭐⭐⭐⭐ | Parallel | Partly |
+| Gameplay Juiciness | 2 | 5h | ⭐⭐⭐⭐⭐ | After Phase 1 | Partly |
+| Expanded Skills | 3 | 7h | ⭐⭐⭐⭐ | Mid-project | Open |
+| Enemy AI Enhancement | 3 | 6h | ⭐⭐⭐⭐ | Mid-project | Open |
+| Cosmetics/Unlockables | 3 | 5h | ⭐⭐⭐ | Late-project | Open |
+| Boss Evolution | 3 | 6h | ⭐⭐⭐⭐ | Late-project | Open |
 
 ---
 
@@ -331,7 +346,10 @@ Your cyber_shooter_2d game has a solid foundation with well-organized modular co
 ✅ Scene management for different screens  
 
 ### Implementation Constraints
-- **Canvas-based rendering**: No 3D, keep effects simple (no complex shaders needed)
+- **Canvas-based rendering**: No 3D, keep effects simple (no complex shaders needed).
+  *Under review* - a renderer swap is being considered for performance
+  headroom. If it happens, this constraint changes; see the status note at
+  the top.
 - **300-line file limit**: Each enhancement should split across multiple small files if needed
 - **No external libraries**: Use only vanilla JS Canvas API, Web Audio API (browser native)
 - **Performance ceiling**: Keep simultaneous particles < 300, entities < 100 total
@@ -348,7 +366,7 @@ Your cyber_shooter_2d game has a solid foundation with well-organized modular co
 ## Recommended Roadmap
 
 ### Week 1: Visual Polish (Quick Wins + Phase 2 Start)
-- Day 1-2: Phase 1 enhancements (UI, particles, build visuals)
+- Day 1-2: Phase 1 enhancements (UI, particles, build visuals) - **done**
 - Day 3-4: Advanced camera effects, skill feedback
 - Day 5: Enemy visuals, gameplay juiciness
 
@@ -358,7 +376,7 @@ Your cyber_shooter_2d game has a solid foundation with well-organized modular co
 - Day 5-7: Boss encounters + cosmetics/achievements
 
 ### Week 3: Polish & Release (Phase 4)
-- Day 1: Performance optimization
+- Day 1: Performance optimization - **done**, except the `shadowBlur` work
 - Day 2: Audio implementation (optional)
 - Day 3: Final UI polish & testing
 
@@ -367,9 +385,9 @@ Your cyber_shooter_2d game has a solid foundation with well-organized modular co
 ## Success Metrics
 
 After implementing these enhancements, you should see:
-- ✅ More satisfying moment-to-moment gameplay (juice/feedback)
-- ✅ Clearer visual distinction between game elements
-- ✅ Deeper strategic choices (skill selection, build variety)
-- ✅ Longer play sessions (achievements, cosmetics, boss variety)
-- ✅ Professional visual polish comparable to indie retro shooters
+- More satisfying moment-to-moment gameplay (juice/feedback)
+- Clearer visual distinction between game elements
+- Deeper strategic choices (skill selection, build variety)
+- Longer play sessions (achievements, cosmetics, boss variety)
+- Professional visual polish comparable to indie retro shooters
 

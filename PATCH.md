@@ -1,5 +1,69 @@
 # Patch History
 
+## 2026-10-22 - Render Loop, Pause and Level-Up Fixes
+
+### Critical
+- **Runaway render loop**: `main.js` and `Game.loop` both scheduled
+  `requestAnimationFrame`, so the chain grew by one callback every frame
+  and the scene was rendered 633 times per frame by frame 630. `Game` now
+  owns the chain exclusively (`startLoop()` schedules it once).
+- **Pause soft-lock**: `ESC` set the paused state without activating the
+  pause scene, so the pause menu never received input, `ESC` could not
+  unpause, and `MenuScene.render` was handed the `Game` object as its
+  `particles` argument - throwing 633 exceptions per frame.
+- **Level-up freeze**: the level-up overlay stopped play for two seconds per
+  level gained, and a multi-level award cost several separate freezes. It
+  was also usually unreachable, because `Player.addXP()` applies the
+  level-up before the game's XP check can fire. Replaced with a fading
+  notice and a particle burst; play is never interrupted.
+
+### Measured
+Headless harness, 600 frames at 1920x1080:
+
+| Metric | Before | After |
+|---|---|---|
+| `game.update()` calls per frame | 333 | 1 |
+| Scene renders per frame | 333 (633 peak) | 1 |
+| Canvas fills per frame | 149,679 | 254 |
+| Fills using `shadowBlur` | 149,663 | 253 |
+| Worst frame (blurred draws) | 667,815 | 304 |
+| Reported FPS | 1800 | 60 |
+
+### Gameplay
+- **Quit to main menu**: `Q` in the pause menu abandons the run and returns
+  to the main menu. The app keeps running - the run state is cleared, not
+  the page. A new run can be started straight away.
+- **Restart from pause**: `R` restarts the run with the same build and
+  difficulty.
+- **One bullet, one enemy**: a player projectile could damage every enemy it
+  overlapped in the same frame. Projectiles are now marked dead after their
+  first hit.
+
+### Fixes
+- A key tap that begins and ends between two frames is no longer dropped;
+  `keysPressed` is consumed by `isKeyPressed()` rather than cleared on
+  keyup.
+- The debug overlay is drawn once by the game loop, on top of everything,
+  instead of once in `renderUI` and again by the pause scene.
+- The menu and settings scenes no longer fill the canvas opaquely, which
+  painted over the starfield and ambient particles the loop had drawn.
+- The `text` particle type gained a velocity - `Particle.update()` reads
+  `this.velocity` for every type and would have thrown on first use.
+- `CollisionSystem` tolerates a null player.
+- The FPS meter measures the real frame interval and discards outlier
+  samples.
+- Shooters retreat at a sane speed.
+- The game-over screen now says what SPACE actually does.
+
+### New
+- `core/debug-overlay.js` - `F` toggles an overlay with fps, frame time,
+  draw counts and entity counts.
+- `entities/build-visuals.js` - per-build ship decoration, extracted from
+  `player.js`.
+
+### Removed
+- `scenes/levelup.js` - the level-up screen is gone.
+
 ## 2026-04-21 - Game Startup Fix
 
 ### Critical Bug Fix

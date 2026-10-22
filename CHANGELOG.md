@@ -2,6 +2,88 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## Bug Fix Pass and Quit-to-Menu (2026-10-22)
+
+### Runaway render loop (critical)
+**Issue**: `main.js` scheduled a `requestAnimationFrame` chain *and*
+`Game.loop` rescheduled itself, so the chain grew by one callback every
+frame. By frame 630 the scene was being rendered 633 times per frame, and
+every one of those renders threw an exception (see the pause soft-lock
+below), so the errors repeated 633 times per frame as well.
+
+**Fix**: `Game` now owns the `requestAnimationFrame` chain exclusively.
+`startLoop()` schedules it once; `loop()` schedules the next frame and
+nothing else may schedule it.
+
+**Measured** (headless harness, 600 frames, 1920x1080):
+
+| Metric | Before | After |
+|---|---|---|
+| `game.update()` calls per frame | 333 | 1 |
+| Scene renders per frame | 333 (633 peak) | 1 |
+| Canvas fills per frame | 149,679 | 254 |
+| Fills using `shadowBlur` | 149,663 | 253 |
+| Worst frame (blurred draws) | 667,815 | 304 |
+| Reported FPS | 1800 | 60 |
+
+### Pause soft-lock (critical)
+**Issue**: `ESC` set `state = 'paused'` without activating the pause scene.
+`PauseScene.update` never ran, so `ESC` could not unpause, the main menu was
+drawn over the frozen game, and `MenuScene.render` received the *Game*
+object as its `particles` argument - throwing `game.draw is not a function`
+633 times per frame, forever.
+
+**Fix**: pausing now switches to the `pause` scene as well as setting the
+state, so the pause menu receives input and unpauses cleanly.
+
+### Quit to main menu
+`Q` in the pause menu abandons the run and returns to the main menu. The
+`Game` instance and the animation loop stay alive - only the run state is
+cleared - so a new run can be started immediately without reloading the app.
+`R` restarts the run with the same build and difficulty.
+
+### Level-up no longer interrupts play
+The level-up overlay froze the game for two seconds per level gained, and a
+multi-level award cost the player several separate freezes. It was also
+unreachable in practice: `Player.addXP()` already applies the level-up, so
+the XP threshold the scene waited for had usually been consumed before the
+game could notice it.
+
+Level-ups are now announced with a fading notice and a particle burst at the
+player. Nothing pauses, nothing overlays the action. `scenes/levelup.js` is
+deleted.
+
+### One bullet, one enemy
+A player projectile could damage every enemy it overlapped in the same frame.
+Projectiles are now marked dead after their first hit, so a bullet damages
+exactly one enemy.
+
+### Other fixes
+- A key tap that begins and ends between two frames is no longer dropped.
+- `keysPressed` is consumed by `isKeyPressed()` rather than cleared on
+  keyup, so the tap survives until the frame that reads it.
+- The debug overlay is drawn once by the game loop, on top of everything,
+  instead of once inside `renderUI` and once again by the pause scene.
+- The menu and settings scenes no longer fill the canvas with an opaque
+  rectangle, which was painting over the starfield and ambient particles
+  the loop had already drawn.
+- The `text` particle type gained a velocity, because `Particle.update()`
+  reads `this.velocity` for every particle type and would have thrown on
+  the first use.
+- `CollisionSystem` tolerates a null player, so quitting to the menu cannot
+  throw from a collision check.
+- The FPS meter now measures the real frame interval instead of callback
+  scheduling jitter, and discards outlier samples (tab switches).
+- Shooters retreat at a sane speed instead of accelerating away.
+- The game-over screen says "Press SPACE to return to main menu", which is
+  what it actually does.
+
+### New
+- `core/debug-overlay.js` - press `F` for fps, frame time, draw counts and
+  entity counts.
+- `entities/build-visuals.js` - per-build ship decoration, extracted from
+  `player.js`.
+
 ## Codebase Consistency Update (2026-04-16)
 
 ### Configuration Centralization
@@ -271,7 +353,7 @@ Skills activated with keys **1** and **2**.
 
 #### Main Game Class
 - Canvas setup and context management
-- Game states: menu, playing, paused, gameover, levelup
+- Game states: menu, settings, playing, paused, gameover
 - Menu system: Build selection (7 builds), difficulty selection (4 levels)
 - Game loop with delta time
 - Entity management (player, enemies, bosses, projectiles, pickups)
@@ -357,10 +439,20 @@ export { Player };
 
 - **WASD / Arrow Keys** - Move player
 - **SPACE** - Shoot
+- **1 / 2** - Active abilities
+- **ESC or P** - Pause (and resume)
+- **R** - Restart the run from the pause menu
+- **Q** - Quit to the main menu from the pause menu
+- **F** - Toggle the debug overlay
 - **UP/DOWN** - Navigate build selection
 - **LEFT/RIGHT** - Navigate difficulty selection
+- **S** - Settings from the main menu
 
 ## File Structure
+
+See the project structure section of README.md - it is the current one. The
+tree below is the historical layout from the initial implementation and is
+kept for reference only.
 
 ```
 simple_claude_game/
@@ -389,7 +481,9 @@ simple_claude_game/
 
 ## Known Issues
 
-None currently reported.
+See the known issues section of README.md for the current list. As of
+2026-10-22 it covers dead code, an unreachable boss, unused config exports
+and a stale constant.
 
 ## Future Improvements
 
@@ -399,6 +493,6 @@ None currently reported.
 - [ ] Weapon upgrades and drops
 - [ ] Multiplayer support
 - [ ] Mobile touch controls
-- [ ] Screen shake effects
+- [x] Screen shake effects
 - [ ] More particle effects
 - [ ] Achievements system
