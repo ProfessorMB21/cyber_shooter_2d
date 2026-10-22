@@ -3,18 +3,28 @@
 class RenderingSystem {
   constructor(game) {
     this.game = game;
+    // Per-frame counts of what actually reached the canvas (used by the
+    // debug overlay to show scene complexity)
+    this.drawCounts = { pickups: 0, enemies: 0, bosses: 0, projectiles: 0 };
   }
 
   render() {
     const ctx = this.game.ctx;
     const settings = this.game.settings;
 
+    // Reset per-frame draw counters
+    const counts = this.drawCounts;
+    counts.pickups = 0;
+    counts.enemies = 0;
+    counts.bosses = 0;
+    counts.projectiles = 0;
+
     // Clear and draw background
     this.game.drawBackground(ctx);
 
-    // Apply camera shake
+    // Apply camera shake (shake state lives on the VisualEffectsSystem)
     ctx.save();
-    ctx.translate(this.game.cameraX, this.game.cameraY);
+    ctx.translate(this.game.visuals.cameraX, this.game.visuals.cameraY);
 
     // Draw particles (background)
     this.game.particles.draw(ctx);
@@ -23,6 +33,7 @@ class RenderingSystem {
     this.game.pickups.forEach(p => {
       if (p.x > -50 && p.x < this.game.width + 50 && p.y > -50 && p.y < this.game.height + 50) {
         p.draw(ctx);
+        counts.pickups++;
       }
     });
 
@@ -37,16 +48,21 @@ class RenderingSystem {
       this.game.enemies.forEach(e => {
         if (e.x > -100 && e.x < this.game.width + 100 && e.y > -100 && e.y < this.game.height + 100) {
           e.draw(ctx);
+          counts.enemies++;
         }
       });
     } else {
       // Quality: draw all (no culling)
-      this.game.enemies.forEach(e => e.draw(ctx));
+      this.game.enemies.forEach(e => {
+        e.draw(ctx);
+        counts.enemies++;
+      });
     }
 
     // Draw bosses (usually visible)
     this.game.bosses.forEach(b => {
       b.draw(ctx);
+      counts.bosses++;
     });
 
     // Draw projectiles (with culling)
@@ -54,10 +70,14 @@ class RenderingSystem {
       this.game.projectiles.forEach(p => {
         if (p.x > -50 && p.x < this.game.width + 50 && p.y > -50 && p.y < this.game.height + 50) {
           p.draw(ctx);
+          counts.projectiles++;
         }
       });
     } else {
-      this.game.projectiles.forEach(p => p.draw(ctx));
+      this.game.projectiles.forEach(p => {
+        p.draw(ctx);
+        counts.projectiles++;
+      });
     }
 
     ctx.restore();
@@ -69,20 +89,16 @@ class RenderingSystem {
   renderUI(ctx) {
     const settings = this.game.settings;
 
-    // Quality mode: full UI with frames and details
     if (settings.getQuality() === 'quality') {
+      // Quality mode: full UI with frames and details
       this.renderUIQuality(ctx);
-      return;
-    }
-
-    // Balanced mode: medium UI
-    if (settings.getQuality() === 'balanced') {
+    } else if (settings.getQuality() === 'balanced') {
+      // Balanced mode: medium UI
       this.renderUIBalanced(ctx);
-      return;
+    } else {
+      // Performance mode: minimal UI
+      this.renderUIPerformance(ctx);
     }
-
-    // Performance mode: minimal UI
-    this.renderUIPerformance(ctx);
   }
 
   renderUIPerformance(ctx) {

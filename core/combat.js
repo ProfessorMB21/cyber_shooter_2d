@@ -34,7 +34,8 @@ class CombatSystem {
     this.game.projectiles.push(new Projectile(
       center.x, center.y - 20,
       0, -400,
-      damage, '#ffff00', true, { size: 6, piercing }
+      damage, '#ffff00', true,
+      { size: 6, piercing, bounds: this.game.worldBounds }
     ));
 
     // Multishot
@@ -45,7 +46,8 @@ class CombatSystem {
         this.game.projectiles.push(new Projectile(
           center.x, center.y - 20,
           Math.sin(angle) * 400, -Math.cos(angle) * 400,
-          damage, '#ffff00', true, { size: 6, piercing }
+          damage, '#ffff00', true,
+          { size: 6, piercing, bounds: this.game.worldBounds }
         ));
       }
     }
@@ -128,7 +130,8 @@ class CombatSystem {
     this.game.projectiles.push(new Projectile(
       center.x, center.y,
       Math.cos(angle) * 200, Math.sin(angle) * 200,
-      enemy.damage, '#ff4444', false, { size: 5 }
+      enemy.damage, '#ff4444', false,
+      { size: 5, bounds: this.game.worldBounds }
     ));
   }
 }

@@ -43,9 +43,9 @@ class SettingsScene {
   }
 
   render(ctx, width, height) {
-    // Background
-    ctx.fillStyle = '#0a0a0f';
-    ctx.fillRect(0, 0, width, height);
+    // NOTE: the background (starfield) and the ambient particles are drawn by
+    // the game loop before the scene is rendered. Filling the canvas here
+    // would paint over both of them.
 
     // Title
     ctx.fillStyle = '#0f0';

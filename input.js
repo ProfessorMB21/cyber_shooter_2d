@@ -36,7 +36,9 @@ class InputHandler {
     window.addEventListener('keyup', (e) => {
       this.keys[e.key.toLowerCase()] = false;
       this.keys[e.code] = false;
-      this.keysPressed[e.key.toLowerCase()] = false;
+      // NOTE: keysPressed is deliberately NOT cleared here. A tap that begins
+      // and ends between two frames would otherwise be lost. isKeyPressed()
+      // consumes the one-shot flag instead.
     });
 
     // Mouse events relative to canvas
@@ -47,12 +49,12 @@ class InputHandler {
         this.mouseY = e.clientY - rect.top;
       });
 
-      this.canvas.addEventListener('mousedown', (e) => {
+      this.canvas.addEventListener('mousedown', () => {
         this.mouseDown = true;
         this.mouseClicked = true;
       });
 
-      this.canvas.addEventListener('mouseup', (e) => {
+      this.canvas.addEventListener('mouseup', () => {
         this.mouseDown = false;
       });
     }

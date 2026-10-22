@@ -63,29 +63,17 @@ async function init() {
       canvas.height = newHeight;
       game.width = newWidth;
       game.height = newHeight;
+      game.updateWorldBounds();
       if (game.particles && game.particles.resize) {
         game.particles.resize(newWidth, newHeight);
       }
     });
 
-    // Start game loop
-    let frameCount = 0;
-    const loop = (timestamp) => {
-      try {
-        frameCount++;
-        if (frameCount === 1) {
-          console.log('[LOOP] First frame executing');
-        }
-        game.loop(timestamp);
-        requestAnimationFrame(loop);
-      } catch (e) {
-        console.error('Game loop error:', e);
-        console.error('Stack:', e.stack);
-      }
-    };
-
+    // Start the animation loop. The Game class owns the requestAnimationFrame
+    // chain - the bootstrap must not schedule it a second time or the whole
+    // scene gets rendered multiple times per frame.
     console.log('[INIT] Starting requestAnimationFrame loop');
-    requestAnimationFrame(loop);
+    game.startLoop();
   } catch (e) {
     console.error('Game initialization error:', e);
     console.error('Error stack:', e.stack);

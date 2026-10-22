@@ -3,6 +3,11 @@
 import { Entity } from '../systems/entity.js';
 import { ENEMY_TYPES } from '../config/index.js';
 
+// Shooter AI: the distance at which shooters start backing off, and how much
+// faster they retreat than they approach.
+const SHOOTER_RETREAT_RANGE = 200;
+const SHOOTER_RETREAT_FACTOR = 2;
+
 class Enemy extends Entity {
   constructor(type, x, y, difficultyMultiplier = 1) {
     const config = ENEMY_TYPES[type] || ENEMY_TYPES.grunt;
@@ -51,9 +56,11 @@ class Enemy extends Entity {
     if (distance > 0) {
       let speed = this.speed * 2.5; // 50% faster movement
 
-      // Shooter keeps distance but more aggressively
-      if (this.shoots && distance < 200) {
-        speed = -speed * 7.5; // Back away faster
+      // Shooter keeps distance but more aggressively. The retreat has to be
+      // faster than the approach or they close in and stop shooting, but not
+      // so fast that they pin themselves against the screen edge.
+      if (this.shoots && distance < SHOOTER_RETREAT_RANGE) {
+        speed = -speed * SHOOTER_RETREAT_FACTOR;
       }
 
       // Add unpredictability - random deviation from direct path

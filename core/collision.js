@@ -16,45 +16,56 @@ class CollisionSystem {
   }
 
   checkPlayerProjectileCollisions(p) {
-    // Player projectile hits enemies
-    this.game.enemies.forEach(e => {
-      if (!p.hits.includes(e) && !e.dead) {
-        const dx = p.x - e.getCenter().x;
-        const dy = p.y - e.getCenter().y;
-        if (dx * dx + dy * dy < (p.size + e.width / 2) ** 2) {
-          e.takeDamage(p.damage);
-          if (!p.piercing) p.dead = true;
-          else p.hits.push(e);
-          if (e.dead) this.game.onKill(e);
-        }
+    // Hot path: this runs for every projectile against every enemy each
+    // frame, so it avoids getCenter() (which allocates) and stops at the
+    // first hit for non-piercing shots.
+    const enemies = this.game.enemies;
+    for (let i = 0; i < enemies.length; i++) {
+      if (p.dead) break;
+      const e = enemies[i];
+      if (e.dead || p.hits.includes(e)) continue;
+
+      const dx = p.x - (e.x + e.width / 2);
+      const dy = p.y - (e.y + e.height / 2);
+      const radius = p.size + e.width / 2;
+      if (dx * dx + dy * dy < radius * radius) {
+        e.takeDamage(p.damage);
+        if (!p.piercing) p.dead = true;
+        else p.hits.push(e);
+        if (e.dead) this.game.onKill(e);
       }
-    });
+    }
 
     // Player projectile hits bosses
-    this.game.bosses.forEach(b => {
-      if (!p.hits.includes(b) && !b.dead) {
-        const dx = p.x - b.getCenter().x;
-        const dy = p.y - b.getCenter().y;
-        if (dx * dx + dy * dy < (p.size + 25) ** 2) {
-          b.takeDamage(p.damage);
-          if (!p.piercing) p.dead = true;
-          else p.hits.push(b);
-          if (b.dead) this.game.onBossKill(b);
-        }
+    const bosses = this.game.bosses;
+    for (let i = 0; i < bosses.length; i++) {
+      if (p.dead) break;
+      const b = bosses[i];
+      if (b.dead || p.hits.includes(b)) continue;
+
+      const dx = p.x - (b.x + b.width / 2);
+      const dy = p.y - (b.y + b.height / 2);
+      const radius = p.size + 25;
+      if (dx * dx + dy * dy < radius * radius) {
+        b.takeDamage(p.damage);
+        if (!p.piercing) p.dead = true;
+        else p.hits.push(b);
+        if (b.dead) this.game.onBossKill(b);
       }
-    });
+    }
   }
 
   checkEnemyProjectileCollisions(p, deltaTime) {
-    const pc = this.game.player.getCenter();
-    const dx = p.x - pc.x;
-    const dy = p.y - pc.y;
-    if (dx * dx + dy * dy < (p.size + 15) ** 2) {
+    const player = this.game.player;
+    const dx = p.x - (player.x + player.width / 2);
+    const dy = p.y - (player.y + player.height / 2);
+    const radius = p.size + 15;
+    if (dx * dx + dy * dy < radius * radius) {
       if (p.aoe) {
-        this.game.player.takeDamage(p.damage * deltaTime * 5);
+        player.takeDamage(p.damage * deltaTime * 5);
         this.game.addShake(1.5);
       } else {
-        this.game.player.takeDamage(p.damage);
+        player.takeDamage(p.damage);
         this.game.addShake(1);
         p.dead = true;
       }
@@ -66,7 +77,15 @@ class CollisionSystem {
     projectiles.forEach(p => {
       this.game.projectiles.push(new Projectile(
         p.x, p.y, p.vx, p.vy, p.damage, p.color, false,
-        { size: p.size, piercing: p.piercing, aoe: p.aoe, expand: p.expand, maxSize: p.maxSize, duration: p.duration }
+        {
+          size: p.size,
+          piercing: p.piercing,
+          aoe: p.aoe,
+          expand: p.expand,
+          maxSize: p.maxSize,
+          duration: p.duration,
+          bounds: this.game.worldBounds
+        }
       ));
     });
   }

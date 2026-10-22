@@ -51,16 +51,10 @@ class MenuScene {
     return null;
   }
 
-  render(ctx, width, height, particles) {
-    // Background
-    ctx.fillStyle = '#0a0a0f';
-    ctx.fillRect(0, 0, width, height);
-
-    // Draw ambient particles
-    if (particles) {
-      particles.update(1/60);
-      particles.draw(ctx);
-    }
+  render(ctx, width, height) {
+    // NOTE: the background (starfield) and the ambient particles are drawn by
+    // the game loop before the scene is rendered. Filling the canvas here
+    // would paint over both of them.
 
     // Title
     ctx.fillStyle = '#0f0';

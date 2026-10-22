@@ -16,6 +16,7 @@ import { VisualEffectsSystem } from './visual-effects.js';
 import { CollisionSystem } from './collision.js';
 import { PerformanceMonitor } from './performance.js';
 import { GameSettings } from './settings.js';
+import { DebugOverlay } from './debug-overlay.js';
 
 class Game {
   constructor(canvas) {
@@ -29,6 +30,9 @@ class Game {
 
     // Performance monitoring
     this.perf = new PerformanceMonitor();
+
+    // Debug overlay (toggle with F)
+    this.debug = new DebugOverlay(this);
 
     // Input
     this.input = new InputHandler(canvas);
@@ -56,6 +60,13 @@ class Game {
     this.bosses = [];
     this.projectiles = [];
     this.pickups = [];
+
+    // Projectile culling bounds, derived from the canvas size
+    this.worldBounds = { minX: -100, maxX: this.width + 100, minY: -100, maxY: this.height + 100 };
+    this.updateWorldBounds();
+
+    // Level tracked at the start of the frame, to detect level-ups
+    this.levelAtFrameStart = 1;
 
     // Timing
     this.lastTime = performance.now();
@@ -121,10 +132,21 @@ class Game {
     this.kills = 0;
     this.bossSpawned = [];
     this.spawnTimer = 0;
+    this.levelAtFrameStart = this.player.level;
 
     this.state = 'playing';
     this.lastTime = performance.now();
-    requestAnimationFrame(this.loop);
+    // NOTE: the animation loop is already running - do NOT schedule it again
+  }
+
+  // Projectiles are culled against the canvas, which is window-sized
+  updateWorldBounds() {
+    this.worldBounds = {
+      minX: -100,
+      maxX: this.width + 100,
+      minY: -100,
+      maxY: this.height + 100
+    };
   }
 
   switchState(newState) {
@@ -155,86 +177,108 @@ class Game {
   render() { return this.renderer.render(); }
   renderUI(ctx) { return this.renderer.renderUI(ctx); }
 
-  loop(timestamp) {
-    // Monitor performance every frame
-    this.perf.update();
-
-    // Apply quality scaling based on FPS
-    const quality = this.perf.getQualityLevel();
-    if (this.player) {
-      this.player.skipBuildVisuals = quality === 'low';
-    }
-
-    if (this.state === 'paused') {
-      const result = this.sceneManager.update(this.input);
-      if (result) {
-        if (result.action === 'resume') {
-          this.state = 'playing';
-          this.lastTime = performance.now();
-        } else if (result.action === 'restart') {
-          this.state = 'menu';
-          this.sceneManager.switchTo('menu');
-        }
-      }
-      this.sceneManager.render(this.ctx, this.width, this.height, this);
-      requestAnimationFrame(this.loop);
-      return;
-    }
-
-    if (this.state !== 'playing') {
-      const result = this.sceneManager.update(this.input);
-      if (result) {
-        if (result.action === 'start') {
-          this.start(result.build, result.difficulty);
-          return;
-        } else if (result.action === 'show_builds') {
-          this.state = 'menu';
-          this.sceneManager.switchTo('menu');
-          if (this.sceneManager.currentScene) {
-            this.sceneManager.currentScene.menuState = 'build_select';
-          }
-        } else if (result.action === 'show_settings') {
-          this.state = 'settings';
-          this.sceneManager.switchTo('settings');
-        } else if (result.action === 'apply_quality') {
-          this.settings.setQuality(result.quality);
-          this.applyQualitySettings();
-          this.state = 'menu';
-          this.sceneManager.switchTo('menu');
-        } else if (result.action === 'back_to_menu') {
-          this.state = 'menu';
-          this.sceneManager.switchTo('menu');
-        } else if (result.action === 'menu') {
-          this.state = 'menu';
-          this.sceneManager.switchTo('menu');
-        }
-      }
-
-      if (this.state === 'menu' || this.state === 'settings') {
-        this.drawBackground(this.ctx);
-        this.particles.update(1/60);
-        this.particles.draw(this.ctx);
-        this.sceneManager.render(this.ctx, this.width, this.height, this.particles);
-      } else {
-        this.sceneManager.render(this.ctx, this.width, this.height, this);
-      }
-      requestAnimationFrame(this.loop);
-      return;
-    }
-
-    if (this.input.isKeyPressed('escape') || this.input.isKeyPressed('p')) {
-      this.state = 'paused';
-      requestAnimationFrame(this.loop);
-      return;
-    }
-
-    const deltaTime = Math.min((timestamp - this.lastTime) / 1000, 0.1);
-    this.lastTime = timestamp;
-
-    this.update(deltaTime);
-    this.render();
-
+  // Begin the animation loop. The Game class owns the requestAnimationFrame
+  // chain exclusively - nothing else may schedule this.loop, or the whole
+  // scene gets rendered multiple times per frame.
+  startLoop() {
+    this.lastTime = performance.now();
     requestAnimationFrame(this.loop);
+  }
+
+  loop(timestamp) {
+    // Schedule the next frame FIRST so a thrown error can never kill the loop
+    requestAnimationFrame(this.loop);
+
+    try {
+      // Monitor performance every frame
+      this.perf.update(timestamp);
+
+      // Toggle the debug overlay
+      if (this.input.isKeyPressed('f')) {
+        this.debug.toggle();
+      }
+
+      // Apply quality scaling based on FPS
+      const quality = this.perf.getQualityLevel();
+      if (this.player) {
+        this.player.skipBuildVisuals = quality === 'low';
+      }
+
+      if (this.state === 'paused') {
+        const result = this.sceneManager.update(this.input);
+        if (result) {
+          if (result.action === 'resume') {
+            this.state = 'playing';
+            this.lastTime = performance.now();
+          } else if (result.action === 'restart') {
+            this.state = 'menu';
+            this.sceneManager.switchTo('menu');
+          }
+        }
+        this.sceneManager.render(this.ctx, this.width, this.height, this);
+        this.debug.render(this.ctx);
+        return;
+      }
+
+      if (this.state !== 'playing') {
+        const result = this.sceneManager.update(this.input);
+        if (result) {
+          if (result.action === 'start') {
+            this.start(result.build, result.difficulty);
+            return;
+          } else if (result.action === 'show_builds') {
+            this.state = 'menu';
+            this.sceneManager.switchTo('menu');
+            if (this.sceneManager.currentScene) {
+              this.sceneManager.currentScene.menuState = 'build_select';
+            }
+          } else if (result.action === 'show_settings') {
+            this.state = 'settings';
+            this.sceneManager.switchTo('settings');
+          } else if (result.action === 'apply_quality') {
+            this.settings.setQuality(result.quality);
+            this.applyQualitySettings();
+            this.state = 'menu';
+            this.sceneManager.switchTo('menu');
+          } else if (result.action === 'back_to_menu') {
+            this.state = 'menu';
+            this.sceneManager.switchTo('menu');
+          } else if (result.action === 'menu') {
+            this.state = 'menu';
+            this.sceneManager.switchTo('menu');
+          }
+        }
+
+        if (this.state === 'menu' || this.state === 'settings') {
+          this.drawBackground(this.ctx);
+          this.particles.update(1/60);
+          this.particles.draw(this.ctx);
+          this.sceneManager.render(this.ctx, this.width, this.height, this.particles);
+        } else {
+          this.sceneManager.render(this.ctx, this.width, this.height, this);
+        }
+        this.debug.render(this.ctx);
+        return;
+      }
+
+      if (this.input.isKeyPressed('escape') || this.input.isKeyPressed('p')) {
+        // The pause scene has to be activated as well - without it the pause
+        // menu never receives input and the game cannot be unpaused.
+        this.state = 'paused';
+        this.sceneManager.switchTo('pause');
+        return;
+      }
+
+      const deltaTime = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+      this.lastTime = timestamp;
+
+      this.update(deltaTime);
+      this.render();
+      this.debug.render(this.ctx);
+    } catch (e) {
+      console.error('Game loop error:', e);
+      console.error('Stack:', e.stack);
+    }
   }
 
   update(deltaTime) {
@@ -286,10 +330,15 @@ class Game {
 
     if (this.player.dead) this.switchState('gameover');
 
-    if (this.player.xp >= this.player.xpToNextLevel) {
-      this.player.levelUp();
+    // Player.addXP() already applies level-ups, so compare levels rather than
+    // re-checking the XP threshold - that would level the player up twice.
+    if (this.player.level !== this.levelAtFrameStart) {
+      this.levelAtFrameStart = this.player.level;
       this.switchState('levelup');
-      setTimeout(() => { if (this.state === 'levelup') this.state = 'playing'; }, 2000);
+      clearTimeout(this.levelUpTimer);
+      this.levelUpTimer = setTimeout(() => {
+        if (this.state === 'levelup') this.state = 'playing';
+      }, 2000);
     }
   }
 }
