@@ -3,6 +3,14 @@
 // Speed scaling factor for gameplay (reduced from 80)
 const SPEED_SCALE_FACTOR = 30;
 
+// Armour reduces incoming damage by 1.5% per point, up to 75%. Armour past
+// the point where that reduction is maxed out is "excess" - it can no
+// longer make the player harder to kill, so the guardian turns it into a
+// cooldown-reduction aura instead (see config/player-builds.js).
+const ARMOR_DAMAGE_REDUCTION = 0.015;
+const ARMOR_MAX_REDUCTION = 0.75;
+const ARMOR_EXCESS_THRESHOLD = ARMOR_MAX_REDUCTION / ARMOR_DAMAGE_REDUCTION; // 50
+
 // Stat growth multipliers per level
 const STAT_GROWTH = {
   hpMultiplier: 1.2,
@@ -30,6 +38,9 @@ const PARTICLES = {
 
 export {
   SPEED_SCALE_FACTOR,
+  ARMOR_DAMAGE_REDUCTION,
+  ARMOR_MAX_REDUCTION,
+  ARMOR_EXCESS_THRESHOLD,
   STAT_GROWTH,
   SCORE_POINTS,
   PARTICLES

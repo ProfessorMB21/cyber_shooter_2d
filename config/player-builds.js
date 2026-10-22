@@ -95,7 +95,15 @@ const PLAYER_BUILDS = [
     },
     abilities: ['SHIELD', 'DIVINE PROTECTION'],
     growth: { armor: 0.10 },
-    passive: 'Protector - 10% armor per level'
+    // The guardian's excess armour - the part that has already maxed out
+    // the 75% damage reduction - becomes a cooldown-reduction aura. It
+    // covers the guardian and any other player within the radius.
+    aura: {
+      radius: 260,
+      cooldownPerArmor: 0.004,
+      maxCooldownReduction: 0.5
+    },
+    passive: 'Protector - 10% armor per level, excess armor speeds up cooldowns'
   }
 ];
 
@@ -108,6 +116,7 @@ PLAYER_BUILDS.forEach(build => {
     color: build.color,
     stats: { ...build.stats },
     growth: { ...build.growth },
+    aura: build.aura ? { ...build.aura } : null,
     abilities: build.abilities,
     passive: build.passive
   };

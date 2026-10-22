@@ -1,7 +1,7 @@
 // Player Entity with Stats and Level System
 
 import { Entity } from '../systems/entity.js';
-import { BUILDS, STAT_GROWTH, SPEED_SCALE_FACTOR } from '../config/index.js';
+import { BUILDS, STAT_GROWTH, SPEED_SCALE_FACTOR, ARMOR_DAMAGE_REDUCTION, ARMOR_MAX_REDUCTION, ARMOR_EXCESS_THRESHOLD } from '../config/index.js';
 import { PlayerAbilities } from './abilities.js';
 import { drawBuildVisual } from './build-visuals.js';
 
@@ -28,6 +28,9 @@ class Player extends Entity {
     this.shield = 0;
     this.rage = 0;
     this.maxRage = 100;
+    // Fraction by which this player's ability cooldowns are shortened, by
+    // its own excess armour or by a guardian aura.
+    this.cooldownReduction = 0;
     this.cooldowns = {};
     this.invulnerable = 0;
     this.cooldownTime = 0;
@@ -78,6 +81,35 @@ class Player extends Entity {
     this.calculateDerivedStats();
   }
 
+  // The armour that has already maxed out the 75% damage reduction. It
+  // cannot make the player any harder to kill, so the guardian spends it
+  // on cooldown reduction instead.
+  get excessArmor() {
+    return Math.max(0, this.currentStats.armor - ARMOR_EXCESS_THRESHOLD);
+  }
+
+  // The cooldown reduction this player grants from its own excess armour.
+  // Zero for every build without an aura.
+  ownCooldownReduction() {
+    const aura = this.build.aura;
+    if (!aura) return 0;
+    return Math.min(aura.maxCooldownReduction, this.excessArmor * aura.cooldownPerArmor);
+  }
+
+  // Recompute the cooldown reduction this player is under: its own excess
+  // armour, or the strongest guardian aura covering it. The guardian is
+  // inside its own aura, so the two are the same number and are not
+  // added together.
+  updateCooldownAura(players) {
+    let reduction = this.ownCooldownReduction();
+    for (const other of players) {
+      if (other === this || !other.build?.aura) continue;
+      if (this.distanceTo(other) > other.build.aura.radius) continue;
+      reduction = Math.max(reduction, other.ownCooldownReduction());
+    }
+    this.cooldownReduction = reduction;
+  }
+
   getDamage() {
     let damage = this.currentStats.damage;
     if (this.buildName === 'berserker') damage *= (1 + (this.rage / this.maxRage) * 1.5);
@@ -95,8 +127,9 @@ class Player extends Entity {
     }
     // Armor reduces damage. The reduction is capped at 75% so that armor
     // can never make the player invulnerable - past that point the armor
-    // number keeps growing but stops adding anything.
-    const reduction = Math.min(0.75, this.currentStats.armor * 0.015);
+    // number keeps growing but stops adding anything, and the guardian
+    // turns the excess into a cooldown aura instead.
+    const reduction = Math.min(ARMOR_MAX_REDUCTION, this.currentStats.armor * ARMOR_DAMAGE_REDUCTION);
     const actualDamage = amount * (1 - reduction);
     this.hp -= actualDamage;
     if (this.buildName === 'berserker') this.rage = Math.min(this.maxRage, this.rage + actualDamage * 0.5);
@@ -109,8 +142,14 @@ class Player extends Entity {
   addShield(amount) { this.shield += amount; }
   activateAbility(abilityName) { return this.abilities.activate(abilityName); }
 
+  // Cooldowns are keyed by the ability name lowercased with the spaces
+  // stripped. The reader and the writer must agree on this, or a
+  // cooldown is set under one key and read under another and the ability
+  // never shows as recharging.
+  cooldownKey(abilityName) { return abilityName.toLowerCase().replace(/\s+/g, ''); }
+
   getCooldown(abilityName) {
-    const now = Date.now(), key = abilityName.toLowerCase().replace(/\s+/g, ''), cooldown = this.cooldowns[key];
+    const now = Date.now(), cooldown = this.cooldowns[this.cooldownKey(abilityName)];
     if (!cooldown) return 0;
     return Math.max(0, (cooldown - now) / 1000);
   }
@@ -169,6 +208,18 @@ class Player extends Entity {
 
   draw(ctx) {
     const center = this.getCenter();
+    // Guardian aura - the radius the cooldown reduction reaches. Faint, so
+    // it never gets in the way of the fight.
+    if (this.cooldownReduction > 0 && this.build.aura) {
+      ctx.save();
+      ctx.strokeStyle = this.color;
+      ctx.globalAlpha = 0.12 + this.cooldownReduction * 0.3;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, this.build.aura.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
     if (this.shield > 0) {
       ctx.save();
       ctx.shadowBlur = 15;
@@ -267,6 +318,12 @@ class Player extends Entity {
         ctx.fillText('READY', x + 5, yPos + 5);
       }
     });
+    if (this.cooldownReduction > 0) {
+      ctx.fillStyle = this.color;
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`AURA -${Math.round(this.cooldownReduction * 100)}% CD`, x + 5, y + 65);
+    }
   }
 }
 

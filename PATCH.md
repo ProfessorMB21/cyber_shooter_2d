@@ -1,5 +1,60 @@
 # Patch History
 
+## 2026-10-22 - The Guardian's Cooldown Aura
+
+### New
+- **The guardian spends its excess armour on a cooldown-reduction aura.**
+  Armour reduces damage by 1.5% per point up to 75%, so armour past 50 is
+  excess - it cannot make the guardian any harder to kill. That excess is
+  now worth cooldown reduction instead: 0.4% per point of excess armour,
+  capped at 50%.
+- **The aura only starts once the damage reduction is maxed out.** The
+  guardian reaches armour 52 at level 4; below that the excess is zero
+  and so is the reduction.
+- **The aura reaches 260 pixels** and covers the guardian and any other
+  player inside it. The game has one player, so the aura is the seam a
+  second player would use.
+- **The reduction applies to the whole cooldown**, not just the readout.
+  Divine Protection's 20 seconds becomes 14.72 seconds at a 26.4%
+  reduction.
+- The aura is drawn as a faint ring around the guardian, and the ability
+  panel shows `AURA -26% CD` while it is active.
+
+### Fixed
+- **Half the abilities never showed a cooldown.** `Player.getCooldown()`
+  looked the cooldown up under the ability name lowercased with the
+  spaces stripped, but the abilities stored it under a camelCase key -
+  `divineProtection` against a lookup for `divineprotection`. Seven of the
+  twelve distinct abilities always read "READY" in the HUD, and
+  `isAbilityReady()` was always true for them. The key is now derived
+  once, in `Player.cooldownKey()`, and the reader and the writer both use
+  it.
+- `Player.takeDamage()` hardcoded the armour reduction (`armor * 0.015`,
+  capped at `0.75`). It now comes from `config/constants.js`
+  (`ARMOR_DAMAGE_REDUCTION`, `ARMOR_MAX_REDUCTION`, and the derived
+  `ARMOR_EXCESS_THRESHOLD`), so the damage formula and the aura cannot
+  drift apart.
+
+### Measured
+
+| Guardian level | Armor | Damage reduction | Excess armor | Cooldown reduction |
+|---|---|---|---|---|
+| 1 | 40 | 60.0% | 0 | 0.0% |
+| 3 | 48 | 72.0% | 0 | 0.0% |
+| 4 | 52 | 75.0% | 2 | 0.8% |
+| 10 | 76 | 75.0% | 26 | 10.4% |
+| 20 | 116 | 75.0% | 66 | 26.4% |
+| 50 | 236 | 75.0% | 186 | 50.0% (capped) |
+
+### Files Modified
+- `config/constants.js` - armour reduction constants
+- `config/index.js` - exports them
+- `config/player-builds.js` - the guardian's `aura` block
+- `entities/player.js` - `excessArmor`, `ownCooldownReduction()`,
+  `updateCooldownAura()`, `cooldownKey()`, the aura ring and readout
+- `entities/abilities.js` - `setCooldown()` applies the reduction
+- `core/game.js` - `game.players`, and the aura is recomputed each frame
+
 ## 2026-10-22 - Uncapped Per-Build Stat Growth
 
 ### Critical

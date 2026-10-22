@@ -2,6 +2,62 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Guardian's Cooldown Aura (2026-10-22)
+
+### The feature
+Armor reduces incoming damage by 1.5% per point, up to 75%. Armor 50 is
+where that reduction is maxed out, so armor past 50 is **excess** - it
+cannot make the guardian any harder to kill. The guardian now spends the
+excess on a cooldown-reduction aura:
+
+- The aura is **off until the damage reduction is maxed out**. The
+  guardian reaches armor 52 at level 4, so the aura starts there. Before
+  that the excess is zero and the reduction is zero.
+- Each point of excess armor is worth 0.4% of cooldown reduction, capped
+  at 50%. Level 4 gives 0.8%, level 10 gives 10.4%, level 20 gives 26.4%
+  (66 excess armor), and level 50 is capped at 50%.
+- The aura reaches 260 pixels and covers the guardian and any other player
+  inside it. The game has one player, so today that means the guardian
+  itself - the aura is the seam a second player would use.
+- The reduction applies to the whole cooldown rather than to the readout,
+  so the ability really does come back sooner: Divine Protection's 20
+  seconds becomes 14.72 seconds at a 26.4% reduction.
+- The aura is drawn as a faint ring around the guardian, and the ability
+  panel shows `AURA -26% CD` while it is active.
+
+### Fixed along the way
+- **Half the abilities never showed a cooldown.** `Player.getCooldown()`
+  read `cooldowns[namelowercasedwithoutspaces]`, but the abilities stored
+  their cooldowns under camelCase keys - `divineProtection` against a
+  lookup for `divineprotection`. Seven of the twelve distinct abilities
+  (Healing Shot, Ground Slam, Adrenaline Rush, Sniper Shot, Smoke Screen,
+  Berserk Rage, Divine Protection) therefore always read "READY" in the
+  HUD, and `isAbilityReady()` was always true for them. The key is now
+  derived in one place, `Player.cooldownKey()`, and both the reader and
+  the writer use it.
+- `Player.takeDamage()` hardcoded the armour reduction as `armor * 0.015`
+  capped at `0.75`. Those numbers now come from
+  `config/constants.js` as `ARMOR_DAMAGE_REDUCTION`,
+  `ARMOR_MAX_REDUCTION` and the derived `ARMOR_EXCESS_THRESHOLD`, so the
+  damage formula and the aura cannot drift apart.
+
+### Files Modified
+- `config/constants.js` - armour reduction constants
+- `config/index.js` - exports them
+- `config/player-builds.js` - the guardian's `aura` block
+- `entities/player.js` - `excessArmor`, `ownCooldownReduction()`,
+  `updateCooldownAura()`, the aura ring, the aura readout
+- `entities/abilities.js` - `setCooldown()` applies the reduction
+- `core/game.js` - `game.players`, and the aura is recomputed each frame
+
+### Verified
+The headless suite is at 55 assertions, 55 passing. The new ones cover:
+no aura before the damage reduction is maxed out, the aura starting
+after it, the real cooldown being shortened, a player inside the aura
+getting the reduction and one outside not getting it, other builds having
+no aura, every one of the 14 abilities reporting a cooldown, and a live
+guardian run applying the aura without throwing.
+
 ## Uncapped Per-Build Stat Growth (2026-10-22)
 
 ### The reported bug

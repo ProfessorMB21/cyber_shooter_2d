@@ -6,6 +6,14 @@ class PlayerAbilities {
     this.cooldowns = player.cooldowns;
   }
 
+  // Start a cooldown, shortened by the player's cooldown reduction. The
+  // reduction is applied to the whole cooldown rather than to the readout,
+  // so the ability really does come back sooner.
+  setCooldown(abilityName, now, durationMs) {
+    const reduction = this.player.cooldownReduction || 0;
+    this.cooldowns[this.player.cooldownKey(abilityName)] = now + durationMs * (1 - reduction);
+  }
+
   // Activate ability by name
   activate(abilityName) {
     const now = Date.now();
@@ -56,7 +64,7 @@ class PlayerAbilities {
   healingShot(now) {
     if (!this.cooldowns.healingShot || now > this.cooldowns.healingShot) {
       this.player.heal(this.player.currentStats.maxHp * 0.25);
-      this.cooldowns.healingShot = now + 6000;
+      this.setCooldown('HEALING SHOT', now, 6000);
       return { activated: true, effect: 'heal', value: this.player.currentStats.maxHp * 0.25 };
     }
     return { activated: false };
@@ -65,7 +73,7 @@ class PlayerAbilities {
   // Fighter: Dash
   dash(now) {
     if (!this.cooldowns.dash || now > this.cooldowns.dash) {
-      this.cooldowns.dash = now + 4000;
+      this.setCooldown('DASH', now, 4000);
       this.player.invulnerable = 0.3;
       return { activated: true, effect: 'dash', duration: 0.2 };
     }
@@ -77,7 +85,7 @@ class PlayerAbilities {
     if (!this.cooldowns.overload || now > this.cooldowns.overload) {
       this.player.overloadActive = true;
       this.player.overloadEndTime = now + 5000;
-      this.cooldowns.overload = now + 15000;
+      this.setCooldown('OVERLOAD', now, 15000);
       return { activated: true, effect: 'damage_boost', multiplier: 2, duration: 5 };
     }
     return { activated: false };
@@ -86,7 +94,7 @@ class PlayerAbilities {
   // Glass Cannon: Teleport
   teleport(now) {
     if (!this.cooldowns.teleport || now > this.cooldowns.teleport) {
-      this.cooldowns.teleport = now + 12000;
+      this.setCooldown('TELEPORT', now, 12000);
       this.player.invulnerable = 0.5;
       return { activated: true, effect: 'teleport' };
     }
@@ -98,7 +106,7 @@ class PlayerAbilities {
     if (!this.cooldowns.shield || now > this.cooldowns.shield) {
       const shieldValue = 100;
       this.player.addShield(shieldValue);
-      this.cooldowns.shield = now + 10000;
+      this.setCooldown('SHIELD', now, 10000);
       return { activated: true, effect: 'shield', value: shieldValue };
     }
     return { activated: false };
@@ -107,7 +115,7 @@ class PlayerAbilities {
   // Tank: Ground Slam
   groundSlam(now) {
     if (!this.cooldowns.groundSlam || now > this.cooldowns.groundSlam) {
-      this.cooldowns.groundSlam = now + 8000;
+      this.setCooldown('GROUND SLAM', now, 8000);
       return { activated: true, effect: 'aoe_damage', damage: this.player.currentStats.damage * 3, radius: 150 };
     }
     return { activated: false };
@@ -118,7 +126,7 @@ class PlayerAbilities {
     if (!this.cooldowns.adrenalineRush || now > this.cooldowns.adrenalineRush) {
       this.player.speedBoostActive = true;
       this.player.speedBoostEndTime = now + 4000;
-      this.cooldowns.adrenalineRush = now + 12000;
+      this.setCooldown('ADRENALINE RUSH', now, 12000);
       return { activated: true, effect: 'speed_boost', multiplier: 1.5, duration: 4 };
     }
     return { activated: false };
@@ -129,7 +137,7 @@ class PlayerAbilities {
     if (!this.cooldowns.sniperShot || now > this.cooldowns.sniperShot) {
       this.player.nextShotCrit = true;
       this.player.nextShotPiercing = true;
-      this.cooldowns.sniperShot = now + 10000;
+      this.setCooldown('SNIPER SHOT', now, 10000);
       return { activated: true, effect: 'crit_shot' };
     }
     return { activated: false };
@@ -140,7 +148,7 @@ class PlayerAbilities {
     if (!this.cooldowns.smokeScreen || now > this.cooldowns.smokeScreen) {
       this.player.smokeScreenActive = true;
       this.player.smokeScreenEndTime = now + 3000;
-      this.cooldowns.smokeScreen = now + 15000;
+      this.setCooldown('SMOKE SCREEN', now, 15000);
       return { activated: true, effect: 'invisibility', duration: 3 };
     }
     return { activated: false };
@@ -150,7 +158,7 @@ class PlayerAbilities {
   berserkRage(now) {
     if (!this.cooldowns.berserkRage || now > this.cooldowns.berserkRage) {
       this.player.rage = this.player.maxRage;
-      this.cooldowns.berserkRage = now + 12000;
+      this.setCooldown('BERSERK RAGE', now, 12000);
       return { activated: true, effect: 'max_rage' };
     }
     return { activated: false };
@@ -161,7 +169,7 @@ class PlayerAbilities {
     if (!this.cooldowns.whirlwind || now > this.cooldowns.whirlwind) {
       this.player.whirlwindActive = true;
       this.player.whirlwindEndTime = now + 2000;
-      this.cooldowns.whirlwind = now + 10000;
+      this.setCooldown('WHIRLWIND', now, 10000);
       return { activated: true, effect: 'whirlwind', damage: this.player.currentStats.damage, duration: 2 };
     }
     return { activated: false };
@@ -173,7 +181,7 @@ class PlayerAbilities {
       this.player.heal(this.player.currentStats.maxHp * 0.5);
       this.player.divineProtectionActive = true;
       this.player.divineProtectionEndTime = now + 2000;
-      this.cooldowns.divineProtection = now + 20000;
+      this.setCooldown('DIVINE PROTECTION', now, 20000);
       return { activated: true, effect: 'damage_immunity', duration: 2 };
     }
     return { activated: false };

@@ -56,6 +56,10 @@ class Game {
 
     // Game data
     this.player = null;
+    // Every player entity in the run. The guardian's aura reaches the
+    // other players in this list, so it is kept separate from
+    // `this.player`, which is the one the local player controls.
+    this.players = [];
     this.enemies = [];
     this.bosses = [];
     this.projectiles = [];
@@ -116,6 +120,7 @@ class Game {
     const mult = DIFFICULTIES[this.difficulty];
 
     this.player = new Player(buildName, this.width / 2, this.height - 100);
+    this.players = [this.player];
 
     // Make game instance available to player for quality settings
     window.gameInstance = this;
@@ -157,6 +162,7 @@ class Game {
   // Reset everything that belongs to a single run
   clearRunState() {
     this.player = null;
+    this.players = [];
     this.enemies = [];
     this.bosses = [];
     this.projectiles = [];
@@ -349,6 +355,10 @@ class Game {
     this.updateStars(deltaTime);
 
     this.player.update(deltaTime, this.input, this.width, this.height);
+
+    // Recompute the cooldown reduction after the player has moved, so the
+    // guardian's aura follows whoever is standing next to it.
+    for (const p of this.players) p.updateCooldownAura(this.players);
 
     if (this.input.isKeyDown(' ') && this.player.shootCooldown <= 0) {
       this.playerShoot();

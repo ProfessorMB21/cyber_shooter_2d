@@ -78,7 +78,7 @@ Seven builds, each with two active abilities and a per-level passive.
 | Balanced | 300 | 15 | 3.0 | 22 | 12 | 10% / x1.5 | Shield, Adrenaline Rush | +6% HP, damage, armor |
 | Sniper | 220 | 14 | 3.0 | 10 | 20 | 25% / x2.5 | Sniper Shot, Smoke Screen | +8% crit chance |
 | Berserker | 320 | 18 | 3.2 | 12 | 10 | 18% / x2.2 | Berserk Rage, Whirlwind | +5% damage, +8% per rage point |
-| Guardian | 450 | 10 | 2.2 | 40 | 8 | - | Shield, Divine Protection | +10% armor |
+| Guardian | 450 | 10 | 2.2 | 40 | 8 | - | Shield, Divine Protection | +10% armor, excess armor speeds up cooldowns |
 
 Base values live in `config/player-builds.js`. Speed is scaled by
 `SPEED_SCALE_FACTOR` (30) at load time.
@@ -100,6 +100,26 @@ Armor is a second exception in effect, not in value: the damage reduction
 it grants is capped at 75%, so armor past 50 keeps rising as a number but
 stops reducing any more damage. The cap is on the reduction, not on the
 stat.
+
+### The guardian's aura
+
+Armor 50 is where the 75% damage reduction is maxed out, so any armor past
+that point is **excess** - it cannot make the guardian any harder to kill.
+The guardian spends the excess on a cooldown-reduction aura instead:
+
+- The aura is **off until the damage reduction is maxed out** (guardian
+  level 4, armor 52).
+- Each point of excess armor is worth 0.4% of cooldown reduction, up to a
+  50% cap. At level 20 the guardian has 66 excess armor and its cooldowns
+  are 26.4% shorter; at level 50 the reduction is capped at 50%.
+- The aura reaches 260 pixels and covers the guardian and any other player
+  inside it. With one player in the game that means the guardian itself -
+  the aura is the co-op hook.
+- The reduction applies to the whole cooldown, not just the readout, so
+  the ability really does come back sooner.
+
+The aura is drawn as a faint ring around the guardian, and the ability
+panel shows `AURA -26% CD` while it is active.
 
 Level-ups are announced with a short fading notice and a particle burst at
 the player. **Play is never interrupted by a level up.**
@@ -218,7 +238,7 @@ config/
   difficulties.js     The 4 difficulty multipliers
   bosses.js           Boss stats, patterns and spawn schedule
   pickups.js          Pickup values and item definitions
-  constants.js        Speed scale, growth, score points
+  constants.js        Speed scale, armour reduction, growth, score points
   game.js             Global settings
 ```
 
