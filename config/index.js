@@ -2,7 +2,9 @@
 
 export {
   SPEED_SCALE_FACTOR,
-  STAT_CAPS,
+  ARMOR_DAMAGE_REDUCTION,
+  ARMOR_MAX_REDUCTION,
+  ARMOR_EXCESS_THRESHOLD,
   STAT_GROWTH,
   SCORE_POINTS,
   PARTICLES
@@ -13,6 +15,7 @@ export { ENEMY_TYPES } from './enemy-types.js';
 export { DIFFICULTIES } from './difficulties.js';
 export { BOSS_PATTERNS, BOSS_CONFIG } from './bosses.js';
 export { PICKUPS, ITEMS } from './pickups.js';
+export { GAME_MODES, DEFAULT_MODE } from './game-modes.js';
 export { GAME_SETTINGS } from './game.js';
 
 // Default export combining all configs
@@ -24,7 +27,9 @@ import { PICKUPS, ITEMS } from './pickups.js';
 import { GAME_SETTINGS } from './game.js';
 import {
   SPEED_SCALE_FACTOR,
-  STAT_CAPS,
+  ARMOR_DAMAGE_REDUCTION,
+  ARMOR_MAX_REDUCTION,
+  ARMOR_EXCESS_THRESHOLD,
   STAT_GROWTH,
   SCORE_POINTS,
   PARTICLES
@@ -33,7 +38,6 @@ import {
 const GAME_CONFIG = {
   ...GAME_SETTINGS,
   SPEED_SCALE_FACTOR,
-  STAT_CAPS,
   STAT_GROWTH,
   builds: PLAYER_BUILDS,
   difficulties: DIFFICULTIES,

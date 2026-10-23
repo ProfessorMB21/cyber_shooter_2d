@@ -1,11 +1,29 @@
 // Game Over Scene
 
+import { ScreenItems, readMouse, drawButton } from './ui.js';
+
 class GameOverScene {
   constructor(game) {
     this.game = game;
+    this.items = new ScreenItems();
+    this.hoveredId = null;
+  }
+
+  layout(width, height) {
+    this.items.reset();
+    const buttons = this.items.buttonRow(['menu'], height / 2 + 130, width, 36);
+    return { buttons };
   }
 
   update(input) {
+    this.layout(this.game.width, this.game.height);
+
+    const mouse = readMouse(this.items, input);
+    this.hoveredId = mouse.hovered ? mouse.hovered.id : null;
+    if (mouse.clicked && mouse.clicked.id === 'menu') {
+      return { action: 'menu' };
+    }
+
     if (input.isKeyPressed(' ')) {
       return { action: 'menu' };
     }
@@ -30,10 +48,9 @@ class GameOverScene {
     ctx.fillText(`Time Survived: ${Math.floor(this.game.gameTime)}s`, width / 2, height / 2 + 40);
     ctx.fillText(`Kills: ${this.game.kills}`, width / 2, height / 2 + 70);
 
-    // Restart
-    ctx.fillStyle = '#888';
-    ctx.font = '18px monospace';
-    ctx.fillText('Press SPACE to restart', width / 2, height / 2 + 120);
+    // Return to the main menu
+    const layout = this.layout(width, height);
+    drawButton(ctx, { ...layout.buttons.menu, label: 'RETURN TO THE MENU (SPACE)', hovered: this.hoveredId === 'menu' });
   }
 }
 

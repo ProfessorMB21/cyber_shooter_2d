@@ -1,63 +1,107 @@
 // Core Rendering System
 
+import { mouseWorldPos } from './controls.js';
+
 class RenderingSystem {
   constructor(game) {
     this.game = game;
+    // Per-frame counts of what actually reached the canvas (used by the
+    // debug overlay to show scene complexity)
+    this.drawCounts = { pickups: 0, enemies: 0, bosses: 0, projectiles: 0 };
   }
 
   render() {
     const ctx = this.game.ctx;
     const settings = this.game.settings;
 
+    // Reset per-frame draw counters
+    const counts = this.drawCounts;
+    counts.pickups = 0;
+    counts.enemies = 0;
+    counts.bosses = 0;
+    counts.projectiles = 0;
+
     // Clear and draw background
     this.game.drawBackground(ctx);
 
-    // Apply camera shake
+    // Apply camera shake (shake state lives on the VisualEffectsSystem)
     ctx.save();
-    ctx.translate(this.game.cameraX, this.game.cameraY);
+    // The shared world of an online run is a fixed size, so it is drawn
+    // scaled to fit the canvas. In the local modes the scale is 1 and this
+    // does nothing.
+    ctx.translate(this.game.worldOffsetX, this.game.worldOffsetY);
+    ctx.scale(this.game.worldScale, this.game.worldScale);
+    ctx.translate(this.game.visuals.cameraX, this.game.visuals.cameraY);
 
     // Draw particles (background)
     this.game.particles.draw(ctx);
 
     // Draw pickups (with culling)
     this.game.pickups.forEach(p => {
-      if (p.x > -50 && p.x < this.game.width + 50 && p.y > -50 && p.y < this.game.height + 50) {
+      if (p.x > -50 && p.x < this.game.worldWidth + 50 && p.y > -50 && p.y < this.game.worldHeight + 50) {
         p.draw(ctx);
+        counts.pickups++;
       }
     });
 
-    // Draw player
-    if (this.game.player) {
-      this.game.player.draw(ctx);
+    // Draw the players. There is one of them in a single player run, two in
+    // dualist, and up to five online.
+    for (const player of this.game.players) {
+      if (player.dead) continue;
+      player.draw(ctx);
     }
+
+    // A name tag over every player but the local one, so the wingman and
+    // the remote players can be told apart at a glance.
+    for (const player of this.game.players) {
+      if (player === this.game.player || player.dead) continue;
+      const center = player.getCenter();
+      ctx.fillStyle = player.color;
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(player.playerName, center.x, center.y - 26);
+    }
+
+    // The line from the ship to the pointer, when the mouse does the
+    // aiming. It is drawn in the world, so it moves with the ship.
+    this.renderAimLine(ctx);
 
     // Draw enemies (with quality-based culling)
     if (settings.getSetting('entityCulling')) {
       // Performance/Balanced: culling enabled
       this.game.enemies.forEach(e => {
-        if (e.x > -100 && e.x < this.game.width + 100 && e.y > -100 && e.y < this.game.height + 100) {
+        if (e.x > -100 && e.x < this.game.worldWidth + 100 && e.y > -100 && e.y < this.game.worldHeight + 100) {
           e.draw(ctx);
+          counts.enemies++;
         }
       });
     } else {
       // Quality: draw all (no culling)
-      this.game.enemies.forEach(e => e.draw(ctx));
+      this.game.enemies.forEach(e => {
+        e.draw(ctx);
+        counts.enemies++;
+      });
     }
 
     // Draw bosses (usually visible)
     this.game.bosses.forEach(b => {
       b.draw(ctx);
+      counts.bosses++;
     });
 
     // Draw projectiles (with culling)
     if (settings.getSetting('entityCulling')) {
       this.game.projectiles.forEach(p => {
-        if (p.x > -50 && p.x < this.game.width + 50 && p.y > -50 && p.y < this.game.height + 50) {
+        if (p.x > -50 && p.x < this.game.worldWidth + 50 && p.y > -50 && p.y < this.game.worldHeight + 50) {
           p.draw(ctx);
+          counts.projectiles++;
         }
       });
     } else {
-      this.game.projectiles.forEach(p => p.draw(ctx));
+      this.game.projectiles.forEach(p => {
+        p.draw(ctx);
+        counts.projectiles++;
+      });
     }
 
     ctx.restore();
@@ -69,20 +113,146 @@ class RenderingSystem {
   renderUI(ctx) {
     const settings = this.game.settings;
 
-    // Quality mode: full UI with frames and details
+    // The ability buttons are collected as they are drawn, so the mouse
+    // can find them.
+    this.game.hudButtons = [];
+
     if (settings.getQuality() === 'quality') {
+      // Quality mode: full UI with frames and details
       this.renderUIQuality(ctx);
-      return;
-    }
-
-    // Balanced mode: medium UI
-    if (settings.getQuality() === 'balanced') {
+    } else if (settings.getQuality() === 'balanced') {
+      // Balanced mode: medium UI
       this.renderUIBalanced(ctx);
-      return;
+    } else {
+      // Performance mode: minimal UI
+      this.renderUIPerformance(ctx);
     }
 
-    // Performance mode: minimal UI
-    this.renderUIPerformance(ctx);
+    this.renderLevelUpNotice(ctx);
+    this.renderNotice(ctx);
+    this.renderRoster(ctx);
+    this.renderCrosshair(ctx);
+  }
+
+  // The line from the ship to the pointer. It is only drawn when the
+  // mouse does the aiming - with the keyboard alone the shots go straight
+  // up and there is nothing to point at.
+  renderAimLine(ctx) {
+    const game = this.game;
+    if (game.settings.getInputScheme() !== 'keyboard_mouse') return;
+    const player = game.player;
+    if (!player || player.dead) return;
+    const center = player.getCenter();
+    const mouse = mouseWorldPos(game.input, game);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(center.x, center.y - 20);
+    ctx.lineTo(mouse.x, mouse.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // The crosshair. It is only drawn when the mouse is part of the input
+  // scheme - there is no point in it when the shots go straight up.
+  renderCrosshair(ctx) {
+    const game = this.game;
+    if (game.settings.getInputScheme() === 'keyboard') return;
+    const x = game.input.mouseX;
+    const y = game.input.mouseY;
+    ctx.save();
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.moveTo(x - 17, y); ctx.lineTo(x - 5, y);
+    ctx.moveTo(x + 5, y); ctx.lineTo(x + 17, y);
+    ctx.moveTo(x, y - 17); ctx.lineTo(x, y - 5);
+    ctx.moveTo(x, y + 5); ctx.lineTo(x, y + 17);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // A message in the middle of the screen, fading away. It says the things
+  // that are worth saying without stopping the run.
+  renderNotice(ctx) {
+    const game = this.game;
+    if (!game.notice || game.noticeTimer <= 0) return;
+
+    const alpha = Math.min(1, game.noticeTimer / 0.6);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 22px monospace';
+    ctx.fillStyle = '#ff0';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 6;
+    ctx.fillText(game.notice, game.width / 2, game.height * 0.22);
+    ctx.restore();
+  }
+
+  // The other players in the run. There is one in dualist - the AI
+  // wingman - and up to four more online.
+  renderRoster(ctx) {
+    const others = this.game.players.filter(p => p !== this.game.player);
+    if (others.length === 0) return;
+
+    const panelWidth = 200;
+    const rowHeight = 32;
+    const x = this.game.width - panelWidth - 10;
+    const y = 10;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(x, y, panelWidth, others.length * rowHeight + 10);
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, panelWidth, others.length * rowHeight + 10);
+
+    others.forEach((p, i) => {
+      const rowY = y + 24 + i * rowHeight;
+      ctx.fillStyle = p.color;
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(p.playerName, x + 10, rowY);
+
+      ctx.fillStyle = p.dead ? '#f00' : '#fff';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(p.dead ? 'DOWN' : `Lv${p.level}`, x + panelWidth - 10, rowY);
+
+      // Health bar
+      const barX = x + 10;
+      const barY = rowY + 5;
+      const barWidth = panelWidth - 20;
+      const percent = p.currentStats.maxHp > 0 ? Math.max(0, p.hp / p.currentStats.maxHp) : 0;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(barX, barY, barWidth, 6);
+      ctx.fillStyle = percent > 0.5 ? '#0f0' : percent > 0.25 ? '#ff0' : '#f00';
+      ctx.fillRect(barX, barY, barWidth * percent, 6);
+    });
+
+    ctx.restore();
+  }
+
+  // A level-up is announced with a brief notice that fades away, so play is
+  // never interrupted.
+  renderLevelUpNotice(ctx) {
+    const game = this.game;
+    if (!game.levelUpNotice || game.levelUpNoticeTimer <= 0) return;
+
+    // Fade out over the last 0.6 seconds
+    const alpha = Math.min(1, game.levelUpNoticeTimer / 0.6);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 30px monospace';
+    ctx.shadowColor = '#0f0';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = '#0f0';
+    ctx.fillText(game.levelUpNotice, game.width / 2, game.height * 0.3);
+    ctx.restore();
   }
 
   renderUIPerformance(ctx) {
@@ -130,6 +300,7 @@ class RenderingSystem {
         const cd = p.getCooldown(ability);
         ctx.fillStyle = cd > 0 ? '#666' : '#0f0';
         ctx.fillText(`[${i + 1}] ${cd > 0 ? cd.toFixed(1) : 'OK'}`, x, y - i * 15);
+        this.game.hudButtons.push({ x, y: y - i * 15 - 12, w: 80, h: 14, index: i });
       });
     }
 
@@ -202,7 +373,7 @@ class RenderingSystem {
 
     // Abilities
     if (this.game.player && this.game.player.build) {
-      this.game.player.drawCooldowns(ctx, this.game.width - 150, this.game.height - 100);
+      this.game.hudButtons = this.game.player.drawCooldowns(ctx, this.game.width - 150, this.game.height - 100) || [];
     }
 
     ctx.restore();
@@ -290,7 +461,7 @@ class RenderingSystem {
 
     // Abilities (full display)
     if (this.game.player && this.game.player.build) {
-      this.game.player.drawCooldowns(ctx, this.game.width - 160, this.game.height - 110);
+      this.game.hudButtons = this.game.player.drawCooldowns(ctx, this.game.width - 160, this.game.height - 110) || [];
     }
 
     ctx.restore();

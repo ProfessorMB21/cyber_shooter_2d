@@ -2,6 +2,904 @@
 
 All changes, bug fixes, and improvements made to the Cyber Shooter game.
 
+## The Abilities Respect Their Cooldown (2026-10-23)
+
+### Seven of the fourteen abilities could be used over and over
+A cooldown is written under the ability's name, lowercased with the spaces
+stripped - `HEALING SHOT` goes in as `healingshot`. The guard inside each
+ability read a different key: `cooldowns.healingShot`. It never found
+anything there, so the guard never fired and the ability went off on every
+press while the panel in the corner counted the cooldown down.
+
+The abilities with two words in their name were the ones affected - the
+other five have the same key either way:
+
+| Ability | Cooldown |
+|---|---|
+| Healing Shot | 6 s |
+| Ground Slam | 8 s |
+| Adrenaline Rush | 12 s |
+| Sniper Shot | 10 s |
+| Smoke Screen | 15 s |
+| Berserk Rage | 12 s |
+| Divine Protection | 20 s |
+
+What it meant in play: a fighter could heal a quarter of its health on
+every tap of the heal key, the tank could slam the ground every time the
+key went down, and the guardian could pop its immunity as often as it
+liked. The cooldown was still being written, so the panel and the AI both
+had it right - only the effect itself ignored it.
+
+### The fix
+Every guard now asks the same question through the same key:
+`PlayerAbilities.isReady()` reads the cooldown through
+`player.cooldownKey()`, exactly the way `setCooldown()` writes it. There
+is one place where the key is derived and both ends go through it.
+
+## The Wingman Is A Target (2026-10-23)
+
+### The enemies were going for the nearest player and never reaching anybody
+The targeting was never wrong. An enemy picked the nearest living player
+with `nearestTo()` and chased it, and in a dualist run that was the wingman
+as often as it was the local player. The problem was that the chase did
+not end in anything.
+
+**A bite was a trickle.** The contact damage was `this.damage *
+deltaTime` - a grunt did `25 * 0.0167` damage, a third of a health point.
+The player has a tenth of a second of invulnerability after every landed
+hit, so the next frame's bite was swallowed by it. An enemy could sit on a
+player for a second and cost it a fraction of a health point.
+
+**The AI kept the enemies at arm's length.** The wingman backed off when
+the enemy came inside 55% of its range, with a weight of 0.9, and panicked
+away from anything within 120 pixels with a weight of 1.6. It was so good
+at keeping the enemies at a distance that they could never so much as
+reach it.
+
+### What the game does now
+- **A bite is a hit.** A quarter of the enemy's damage, and no more than
+  one bite every half second per enemy. A grunt that reaches a fighter
+  costs it 4.8 health points.
+- **An enemy keeps its target.** The player it picked is kept for one and
+  a half seconds before the choice is made again, unless that player dies.
+  Which player is nearest changes about a hundred and thirty times in a
+  forty second run; the target the enemy holds changes forty seven times.
+- **The AI fights with its back to the wall.** It backs off inside half its
+  range with a weight of 0.5, and panics away from an enemy within 70
+  pixels with a weight of 1.0.
+- **A bite shakes the screen.** Three pixels, whoever was bitten.
+
+### What it changed
+The wingman in a dualist run now takes real damage. Over a forty second
+run it used to take nothing at all - one health point in five runs - and it
+now takes between 15 and 44.
+
+| 40 second dualist run | Before | After |
+|---|---|---|
+| Damage that lands on the wingman | 0 - 1 | 15 - 44 |
+| Damage that lands on a local player standing still | 74 (it survives) | 368 (it does not) |
+
+One grunt sitting on one player for three seconds:
+
+| | Before | After |
+|---|---|---|
+| Hits | 27 | 6 |
+| Damage | 8.6 | 29 |
+
+The second table is the point of the whole change: a player who stands
+still in a swarm of thirty enemies is now in danger, and one who keeps
+moving is not. Before, standing still only cost 74 health points in forty
+seconds, and the wingman could not be touched at all.
+
+### Files Modified
+- `entities/enemy.js` - the target lock and the bite
+- `core/simulation.js` - the screen shake for a bite
+- `systems/ai.js` - how far the AI backs off and when it panics
+
+## The Screen Shake Can Be Seen (2026-10-23)
+
+### The shake was there, and nothing moved
+The screen shake was wired up correctly - the renderer moved the world by
+`cameraX`/`cameraY`, and the game updated it every frame. What it did not
+do was *move*.
+
+`addShake()` was handed amounts between 0.5 and 3, and the offset was
+computed as `(Math.random() - 0.5) * shakeAmount`. That is a fraction of
+a pixel: a hit that asked for a shake moved the world by half a pixel,
+and the biggest shake in the game, the one for a boss dying, moved it by
+one and a half. The effect decayed at 5 units a second, so it was over
+before anyone could see it.
+
+### The amount is now the number of pixels
+`addShake(n)` means *the world may move n pixels in one direction*, and
+the offset is picked afresh every frame, so the screen shivers on the
+spot rather than sliding off in one direction. The amounts at the call
+sites were rewritten to say what they are worth:
+
+| What happened | Before | Now |
+|---|---|---|
+| A shot | 0.5 | 1.5 px |
+| A shot hitting a player | 1 | 4 px |
+| A blast hitting a player | 1.5 | 6 px |
+| An enemy dying | 0.5 | 2.5 px |
+| A ground slam | 2 | 9 px |
+| A boss dying | 3 | 12 px |
+
+The shake is capped at 18 pixels, so nothing can throw the world off the
+screen, and it is given up at 20 pixels a second, so it settles within a
+third of a second.
+
+`applyCamera()` and `resetCamera()` in `core/visual-effects.js` were
+never called by anything. They are gone.
+
+### Files Modified
+- `core/visual-effects.js` - the shake, in pixels
+- `core/combat.js` - the recoil and the ground slam
+- `core/collision.js` - a shot hitting a player
+- `core/events.js` - an enemy dying and a boss dying
+
+## The Settings Screen Shows What Is In Force (2026-10-23)
+
+### The settings screen says what is in force
+There were two different things on the screen and only one of them was
+marked: the cursor moved, but nothing said which profile or scheme was
+actually in use. Now:
+
+- The option that is in force carries an `ACTIVE` badge. The cursor
+  keeps its own marker, so the two are not confused for each other.
+- The line under the title reads `IN USE: ...` and names both settings
+  that are in force.
+
+### The input schemes are a row of cards
+The three schemes were a column of text in a list, which is the least
+clear way to choose between them. They are now **three cards in a row**,
+each with a picture of the scheme in it - the keys that are used lit up,
+the mouse and the crosshair where they apply.
+
+The pictures are SVG files in `assets/input-schemes/`, so they stay sharp
+at any size and cost nothing to load. A picture that has not arrived yet
+is replaced by the name of the scheme, so the screen is never blank.
+
+### The back button no longer sits on the hints
+The `BACK` button in the settings panel overlapped the key hints. The
+hints are now two lines on the left of the panel and the button is on
+the right, so they cannot run into each other.
+
+### Files Modified
+- `scenes/settings.js` - the row of cards, the `IN USE` line, the
+  active badge and the panel that no longer overlaps
+- `scenes/settings-options.js` - new: how the options are drawn
+- `scenes/scheme-images.js` - new: loads the SVG pictures
+- `core/settings.js` - the scheme descriptions, shortened to fit a card
+- `assets/input-schemes/*.svg` - new: the three pictures
+
+## The Menus Are Never Quite Still (2026-10-23)
+
+### The menus are never still
+The main menu used to be a picture. The starfield behind it was only
+updated while a run was going, the backdrop was the plain game
+background, and the title sat there with a fixed glow. The menu now
+runs on the same clock as the world does.
+
+- The starfield drifts behind the menus, not just in a run.
+- The backdrop has clouds of colour that sway and a band of light that
+  crosses the screen every fourteen seconds.
+- The title glow breathes, the marker beside the selected entry blinks,
+  the outline of the row the cursor is on pulses, and the hint line
+  fades in and out.
+
+`core/game.js` keeps a clock that advances every frame whatever the game
+is doing, and the time since the last frame is worked out at the top of
+the loop so every branch has it.
+
+### Files Modified
+- `core/visual-effects.js` - the menu backdrop: the clouds, the sweep
+  and the menu's own draw path
+- `core/game.js` - the clock, and the delta at the top of the loop
+- `scenes/menu.js` - the breathing title, the blinking marker, the
+  pulsing rows
+- `scenes/ui.js` - `pulse`, `drawGlowText`, `fitText` and `wrapText`
+
+## The Mouse And The Input Schemes (2026-10-23)
+
+### The feature
+The mouse now works on **every** screen, and what the mouse and the
+keyboard do in a run is the player's choice. There are three schemes, and
+the one in use is chosen in Settings and remembered between sessions.
+
+| Scheme | Move | Aim | Shoot | Abilities |
+|---|---|---|---|---|
+| Keyboard Only | `WASD` / arrows | Straight up | `SPACE` | `1` and `2` |
+| Keyboard + Mouse | `WASD` / arrows | The mouse | Left click | `1` and `2` |
+| Mouse + QER | The mouse | The mouse | Left click | `Q` and `E` |
+
+The mouse used to be tracked and thrown away. Shots were hardcoded
+straight up in `core/combat.js` and `input.getMouseDirection()` was dead
+code. Both are gone; the shots now go where the pointer is.
+
+### The mouse on every screen
+The main menu, the build select, the wingman select, the settings, the
+lobby, the room, the pause menu and the game over screen all take the
+pointer: hovering selects an entry and clicking activates it. The ability
+panels in the corner of the screen are buttons too - click one and that
+ability fires.
+
+The keyboard still works everywhere, so nothing became mouse-only.
+
+### One layout, drawn and clicked
+Every screen computes its layout once and then both draws it and hit-tests
+against it. The rectangle the mouse hits and the rectangle the player
+sees are the same numbers, so a button cannot drift away from the thing
+it activates - and the hit test is not a frame behind the drawing, because
+the layout is recomputed when the screen is updated rather than recorded
+when it is rendered.
+
+`scenes/ui.js` holds the shared plumbing: a registry of clickable
+rectangles, a helper that lays a row of buttons out, and the button
+drawing itself.
+
+### The scheme is the same online
+`core/controls.js` turns the keyboard and the mouse into the input object
+the simulation already understood. Both the local game and the online
+client build their input with it, so a networked run behaves exactly like
+a local one and the server needs to know nothing about the scheme.
+
+The pointer is in canvas coordinates and the shared world is drawn scaled
+to fit the window, so the position is converted into world coordinates
+before it is used.
+
+### Files Modified
+- `core/controls.js` - new: the one place the keyboard and the mouse
+  become the input object
+- `scenes/ui.js` - new: the clickable item registry and the buttons
+- `core/settings.js` - the three schemes, and they are saved to
+  `localStorage` like the performance profile is
+- `input.js` - the click position, the "the mouse moved" flag, the
+  right button ignored and the browser's own menu suppressed;
+  `getMouseDirection()` deleted
+- `core/game.js` - the local input, the ability buttons in the HUD, and
+  the click that belongs to the game rather than to the pause menu
+- `core/renderer.js` - the crosshair, the line from the ship to the
+  pointer, and the ability panels collected as they are drawn
+- `entities/player.js` - the ability panels return their rectangles, so
+  the mouse can find them
+- `core/online-session.js` - the input that goes to the server is built
+  by the same code
+- `scenes/menu.js`, `scenes/settings.js`, `scenes/lobby.js`,
+  `scenes/pause.js`, `scenes/gameover.js` - the mouse on every screen
+
+### Fixed
+- **A click in the game could press a button in the pause menu.** Click
+  and press `ESC` in the same frame and the pause menu opened on top of
+  the click that was still in flight, and pressed whatever was under the
+  pointer - quitting the run, without the player touching the mouse
+  again. The click belongs to the game, so the game takes it when it
+  pauses.
+- **A click landed on whatever the pointer was over, not on what was
+  pressed.** The screens matched the click against the item under the
+  pointer *now*. If the pointer drifted between the button going down
+  and the frame that handled it, the wrong thing was chosen. The click
+  is now matched against the position the click happened at, and the
+  press position comes from the event rather than from the last move.
+- **The mouse used to be tracked and thrown away.** The shots were
+  hardcoded straight up in `core/combat.js` and `input.getMouseDirection()`
+  was dead code. Both are gone.
+
+### Verified
+A new headless probe drives the real game with a real mouse: the three
+schemes are offered, a click on the menu opens the settings, the settings
+apply a scheme and remember it, the mouse aims the shot and the
+projectile travels at that angle, a click shoots, the mouse moves the
+ship, `Q` and `E` fire the abilities, the ability buttons in the HUD
+take a click, a click from the game does not press a pause button, a
+click lands where the button went down, the pause menu's QUIT button
+works, the game over button works, and nothing throws. **26 assertions,
+26 passing.**
+
+The existing suite is unchanged: 55 assertions, 55 passing. The mode
+probe: 12, 12. The dualist probe: 8, 8. The AI probe: 42, 42. The
+simulation probe: 4, 4. The online probe: 17, 17. The performance is
+unchanged: 253.42 fills per frame against a baseline of 253.18, one
+`requestAnimationFrame` callback per frame, no errors.
+
+## The Online Client (2026-10-23)
+
+### The feature
+The third game mode is playable: **Multiplayer**, up to five players in one
+room over the network. The main menu is now a list of three modes, and
+picking Multiplayer opens a lobby instead of the build select.
+
+```
+Main menu -> MULTIPLAYER -> the lobby -> a room -> your callsign and build -> play
+```
+
+### The lobby
+- The room list, with the number of players in each room. `C` creates one.
+- In a room: the roster, and the two pickers - your callsign (up and down)
+  and your build (left and right). `ENTER` starts the run for everybody in
+  the room, `ESC` leaves it.
+- The callsigns are picked from a list rather than typed, so the roster
+  stays readable.
+
+### The client never simulates the world
+The server sends snapshots and the client draws them. The snapshots are
+turned into the real entity objects - the same `Enemy`, `Boss`,
+`Projectile` and `Pickup` classes the local modes use - so the drawing
+code does not have to know that the run is online, and the renderer needed
+no changes beyond the world transform.
+
+- The world is drawn one snapshot behind and the positions are
+  interpolated between the two most recent snapshots, so the movement is
+  smooth at 20 snapshots a second.
+- The shared world is 1280x720 and every client draws it scaled to fit its
+  own window, so the field is the same for everybody.
+- The snapshot carries the player's XP, their damage and the seconds left
+  on each of their ability cooldowns, so the HUD is right without the
+  client having to work anything out.
+- A dead player is not drawn, and the roster shows them as `DOWN`.
+
+### Online runs cannot be paused
+The world keeps running on the server whether you like it or not, so `ESC`
+says so instead of pausing. Once you are down you can watch the rest of
+the fight, and `ESC` leaves the room.
+
+### Files Modified
+- `systems/network.js` - new: the client side of the socket
+- `core/online-world.js` - new: the snapshots turned into entities
+- `scenes/lobby.js` - new: the lobby, the room and the two pickers
+- `scenes/index.js` - exports the lobby, and the scene manager tells a
+  scene when it is shown and when it is left
+- `scenes/menu.js` - an online mode opens the lobby
+- `config/game-modes.js` - the multiplayer mode
+- `core/game.js` - the online run, the input that goes to the server and
+  the world transform
+- `core/renderer.js` - the world transform, dead players and the notice
+- `core/simulation.js` - a player who is out of the run does not move and
+  does not shoot
+- `server/rooms.js`, `server/index.js`, `shared/protocol.js` - the callsign,
+  the fuller player snapshot, the latched ability presses and the build
+  name check
+
+### Verified
+A new headless probe starts the real server and drives the real client
+against it: the menu opens the lobby, the client connects and is given an
+id, the room list arrives, it creates a room, the roster shows it, the
+build reaches the server, the run starts, the enemies and the projectiles
+come back from the server, the world is the shared size and is scaled to
+fit, the local player moves when the key is held, and the run does not
+throw. **17 assertions, 17 passing.**
+
+The existing suite is unchanged: 55 assertions, 55 passing. The mode
+probe is unchanged: 12 assertions, 12 passing. The performance is
+unchanged: 253.13 fills per frame against a baseline of 252.81-253.6, one
+`requestAnimationFrame` callback per frame, no errors.
+
+## The Multiplayer Server (2026-10-23)
+
+### The feature
+A server that serves the game over HTTP and runs the networked worlds over
+a WebSocket on the same port. It has no dependencies at all.
+
+```bash
+npm start          # node server/index.js
+# then open http://localhost:8080
+```
+
+### What is in it
+- **`server/websocket.js`** - a hand written RFC 6455 WebSocket server.
+  The project has no build step and no `node_modules`, so a library was not
+  an option. This is the part of the RFC the game needs: the opening
+  handshake, text frames in both directions, fragmentation, ping, pong and
+  close. The frames the server sends are never masked; the ones it receives
+  always are, and the mask is undone as they are parsed.
+- **`server/rooms.js`** - the rooms. A room is a lobby and a world: players
+  join it, pick a build, and when somebody starts the run the room creates
+  a `Simulation`, adds every player to it, and ticks it. A room holds up to
+  five players.
+- **`server/index.js`** - the HTTP server, the WebSocket upgrade, the
+  message handling and the ticker. One timer drives every room.
+- **`shared/protocol.js`** - the messages the two sides exchange, shared by
+  both so they can never disagree about what a message means.
+
+### The server is the authority
+A networked room runs **one** simulation, on the server. The clients send
+their input and are sent snapshots of the world; they never simulate it
+themselves, so they cannot drift apart.
+
+- The world ticks at 60 Hz. The snapshots go out at 20 Hz - nobody can see
+  the difference between the two and the bandwidth is real.
+- A snapshot carries the players, the enemies, the bosses, the projectiles
+  and the pickups, with the positions in each entity's own centre.
+- A client's input goes stale after half a second without a refresh. A
+  client that stalls stops moving rather than running on forever.
+- When the last player in a room dies the run is over and the room goes
+  back to being a lobby.
+
+### Files Modified
+- `server/index.js` - new: the HTTP server, the WebSocket upgrade and the
+  60 Hz ticker
+- `server/websocket.js` - new: the hand written WebSocket
+- `server/rooms.js` - new: the lobby rooms and the worlds they run
+- `shared/protocol.js` - new: the wire protocol
+- `package.json` - a `start` script
+
+### Verified
+A new headless probe starts the real server as a child process and drives
+it with two real WebSocket clients: they connect, are welcomed with
+different ids, one creates a room, the other joins it, the run starts, the
+world is simulated on the server, the snapshots reach both clients with
+the players in them and the players moving, and a disconnect takes the
+player out of the world without stopping the server. **16 assertions, 16
+passing.**
+
+The static server was checked by hand too: the game files are served with
+the right content types, a missing file is a 404, and four different
+path-traversal attempts (raw and percent-encoded) all come back 404
+rather than reaching outside the project directory.
+
+The existing suite is unchanged: 55 assertions, 55 passing.
+
+## Game Modes and Dualist (2026-10-23)
+
+### The feature
+The main menu is now a list of game modes. `UP`/`DOWN` moves through it
+and `SPACE` picks one. Two modes are playable today:
+
+| Mode | Players | Where the world runs |
+|---|---|---|
+| Single Player | 1 | On your machine |
+| Dualist | 2 - you and an AI wingman | On your machine |
+
+### Dualist
+You and a wingman fly the same field. The wingman is a full player - it
+takes damage, it levels up, it collects pickups, it uses its abilities,
+and it can die. It is driven by the AI rather than by the keyboard, and it
+has a build of its own, chosen on its own screen after yours:
+
+```
+Main menu -> DUALIST -> your build + difficulty -> the wingman's build -> play
+```
+
+The build select screen is unchanged for a single player run, so the
+existing flow - `SPACE`, `SPACE` - still starts a game.
+
+### Shared kills and XP
+A kill grants XP and score to every living player. The level penalty is
+worked out from the *average* level of the living players, so a single
+player run is numerically identical to the one it replaced, and a dualist
+run levels both players up at about the rate one player would level up at.
+
+The guardian's cooldown aura now has somebody to cover: it reaches 260
+pixels, and the wingman stands inside it when it keeps close.
+
+### Reading the screen
+- A panel in the top right lists the other players in the run - their name,
+  their level and their health. A dead player shows as `DOWN`.
+- Every player but your own has a name tag over their ship, so the wingman
+  and the remote players can be told apart at a glance.
+- The local player's bullets are yellow; everyone else's take their build
+  colour.
+
+### Files Modified
+- `config/game-modes.js` - new: the modes, their player limits and whether
+  they are online
+- `config/index.js` - re-exports them
+- `scenes/menu.js` - the main menu is a mode list, and there is a new
+  wingman select screen
+- `core/game.js` - handles the two new scene actions
+- `core/renderer.js` - the roster panel and the name tags
+
+### Verified
+A new headless probe drives the real menu: it opens the build select, starts
+a single player run, goes back, picks the second mode, picks a build, picks
+a different wingman build, and checks the run that comes out has two
+players, that the wingman is an AI player with a controller, and that the
+two builds were chosen independently. **12 assertions, 12 passing.**
+
+The existing suite is unchanged: 55 assertions, 55 passing.
+
+## The Friendly AI (2026-10-23)
+
+### The feature
+`systems/ai.js` is a new controller that drives a player the way a person
+would: pick a target, move around it, shoot at it, and use an ability when
+the build says the moment is right. It produces the same input object the
+keyboard produces, so nothing downstream - the player entity, the combat
+system, the cooldowns - knows whether a person or the AI is in charge.
+
+An AI player is a full player. It takes damage, it levels up, it collects
+pickups, it uses its abilities, and it can die.
+
+### How each build fights
+Every build has its own idea of a fight, in one table:
+
+| Build | Range | Strafing | Stays with the party | Aggression |
+|---|---|---|---|---|
+| Fighter | 220 | 0.70 | 380 | 0.65 |
+| Glass Cannon | 300 | 0.80 | 380 | 0.55 |
+| Tank | 150 | 0.40 | 320 | 0.75 |
+| Balanced | 210 | 0.60 | 360 | 0.65 |
+| Sniper | 430 | 0.50 | 420 | 0.45 |
+| Berserker | 110 | 0.30 | 300 | 0.95 |
+| Guardian | 190 | 0.50 | 200 | 0.50 |
+
+The range is the distance it holds from its target - the berserker wants to
+be on top of the enemy, the sniper wants to be far away, the glass cannon
+sits in between. Strafing is how much it circles. "Stays with the party" is
+how close it keeps to the other players, and the guardian keeps closest of
+all because its aura only reaches 260 pixels. Aggression is how hard it
+pushes towards the target rather than away from it.
+
+On top of that it swerves away from the enemies that are on top of it,
+goes for a health pickup when it is hurt, and stays off the edges of the
+world. It holds its target for 0.6 seconds at a time so it does not flip
+between two equally close enemies every frame, and a boss wins the contest
+if it is within 700 pixels.
+
+### When it uses an ability
+The abilities fire on rules rather than on a timer. Each rule reads what
+the AI can see - how hurt it is, how many enemies are close, how its ally
+is doing:
+
+| Ability | Uses it when |
+|---|---|
+| Healing Shot | below 65% HP |
+| Dash | an enemy is within 95px and it is below 60% HP, or 3+ enemies are on top of it |
+| Overload | 2+ enemies are nearby, or it is below 50% HP with a target |
+| Teleport | below 35% HP, or 3+ enemies are on top of it |
+| Shield | below 60% HP, or an enemy is within 80px |
+| Ground Slam | 3+ enemies are nearby |
+| Adrenaline Rush | the target is further than 380px and it is above 50% HP, or it is below 40% HP |
+| Sniper Shot | it has a target within 600px |
+| Smoke Screen | below 50% HP, or 3+ enemies are on top of it |
+| Berserk Rage | below 50% HP, or its rage is low and something is nearby |
+| Whirlwind | 3+ enemies are on top of it, or 4+ are nearby |
+| Divine Protection | below 40% HP, or 4+ enemies are on top of it, or its ally is in danger |
+
+The rules are keyed by the ability's display name, so all twelve live in
+one table in `systems/ai.js` and every build's pair of abilities finds its
+entry there.
+
+### How it is wired in
+- `core/game.js` keeps a map of controllers, keyed by player id. A player
+  flagged `isAI` gets one in `start()`, and `buildInputs()` routes that
+  player through its controller instead of the keyboard.
+- The frame time is threaded through `buildInputs(deltaTime)` rather than
+  stored on the game, so a controller can be driven from a test without a
+  frame loop.
+- The AI aims. `combat.playerShoot(player, aim)` already took an angle, so
+  the AI's bullets go where it is looking while the human's still go
+  straight up.
+
+### Files Modified
+- `systems/ai.js` - new: the controller, the per-build table, the ability
+  rules
+- `core/game.js` - the controller map, and `buildInputs()` routes the AI
+  players
+
+### Verified
+Two new headless probes:
+- `probe-ai.mjs` runs the controller against a real `Simulation` for each
+  of the seven builds - 15 seconds each, with a ring of enemies around the
+  AI. Every build has to move, shoot, damage the enemies, use an ability
+  and survive. **42 assertions, 42 passing.**
+- `probe-dualist.mjs` boots the real `Game` class with a human player and
+  an AI wingman and checks the wingman is driven by a controller, moves on
+  its own, shoots the enemies, and that the run renders without throwing.
+  **8 assertions, 8 passing.**
+
+The existing suite is unchanged: 55 assertions, 55 passing. The
+performance harness is unchanged too: 254.06 canvas fills per frame
+(baseline 252.81-253.6), one `requestAnimationFrame` callback per frame,
+0 errors.
+
+## Simulation / Presentation Split (2026-10-23)
+
+### The feature
+The game world has been lifted out of the canvas. `core/simulation.js` is a
+new, DOM-free `Simulation` class that holds the players, the enemies, the
+bosses, the projectiles and the pickups, and advances them from a set of
+inputs. `core/game.js` now *is* that simulation - `Game extends Simulation` -
+with a canvas, an input handler and the screens attached on top.
+
+Nothing about the game changed for the player: a single player run behaves
+exactly as it did. What changed is that the world can now be run by
+something that has no screen.
+
+### Why
+A networked run has to be simulated in exactly one place. If every client
+simulated its own copy of the world, they would drift apart within a second
+or two - two enemies killed by two different clients, a boss dead on one
+screen and alive on the next. The server needs to run the *same* physics,
+combat, collision, spawning and scoring code the browser runs, and the only
+way to guarantee that is to run the same module.
+
+The split is therefore the prerequisite for multiplayer, not a refactor for
+its own sake.
+
+### The input contract
+Every player - human, AI or remote - is driven by the same frozen input
+object:
+
+```js
+{ dx, dy, shoot, ability1, ability2, aim }
+```
+
+`Simulation.update(deltaTime, inputs)` takes a map from player id to that
+object. The local player builds one from the keyboard, the AI builds one
+from what it can see, and the server builds one from what a client sent over
+the wire. A player with no input for this frame gets `EMPTY_INPUT` - no
+movement, no shooting.
+
+### What else changed
+- **`nearestTo(x, y, candidates)`** in `systems/entity.js` is now how
+  everything picks a target. It accepts a single entity or a list and skips
+  the dead ones, so enemies, bosses, pickups and enemy projectiles all
+  target the nearest *living* player. In a solo run that is the same player
+  as before.
+- **`combat.playerShoot(player, aim)`** takes an optional angle. The local
+  player passes `null` and shoots straight up exactly as before; the AI
+  passes a real angle. The local player's bullets stay yellow; everyone
+  else's take their build colour.
+- **XP and score are shared.** A kill grants XP and score to every living
+  player. The level penalty is derived from the *average* level of the
+  living players, so with one player the numbers are identical to the
+  single player run they replaced.
+- **The renderer draws every player** in `game.players`, and culls
+  projectiles and pickups against the world size rather than the canvas size.
+- **`package.json`** is new, with `"type": "module"` and no dependencies.
+  It is what lets Node import the game's ES modules for the server; without
+  it Node would treat them as CommonJS and the import would fail. There is
+  still no build step, no bundler and no lockfile.
+- **The Simulation is verified without a DOM.** A probe imports
+  `core/simulation.js` into plain Node, runs 120 steps with two players
+  (a fighter and a guardian) and checks that the world advances, both
+  players survive and the grunts take damage from the players' shots.
+
+### Files Modified
+- `core/simulation.js` - new: the DOM-free world, `EMPTY_INPUT`,
+  `NullParticles`
+- `core/game.js` - `Game extends Simulation`; the canvas, input, scenes and
+  level-up notice stay here
+- `core/combat.js` - `playerShoot` takes an aim angle
+- `core/collision.js` - enemy projectiles hit the nearest living player
+- `core/events.js` - shared XP and score, penalty from the average level
+- `core/spawning.js`, `core/renderer.js` - world size instead of canvas size
+- `entities/player.js` - the input may be a plain object
+- `entities/enemy.js`, `entities/boss.js`, `entities/pickup.js` - target the
+  nearest living player
+- `systems/entity.js` - `nearestTo()`
+- `package.json` - new
+
+### Verified
+The headless suite is at 55 assertions, 55 passing - unchanged from before
+the split. The performance harness is unchanged too: 253.94 canvas fills per
+frame (baseline 252.81-253.6), one `requestAnimationFrame` callback per
+frame, 0 errors.
+
+## The Guardian's Cooldown Aura (2026-10-22)
+
+### The feature
+Armor reduces incoming damage by 1.5% per point, up to 75%. Armor 50 is
+where that reduction is maxed out, so armor past 50 is **excess** - it
+cannot make the guardian any harder to kill. The guardian now spends the
+excess on a cooldown-reduction aura:
+
+- The aura is **off until the damage reduction is maxed out**. The
+  guardian reaches armor 52 at level 4, so the aura starts there. Before
+  that the excess is zero and the reduction is zero.
+- Each point of excess armor is worth 0.4% of cooldown reduction, capped
+  at 50%. Level 4 gives 0.8%, level 10 gives 10.4%, level 20 gives 26.4%
+  (66 excess armor), and level 50 is capped at 50%.
+- The aura reaches 260 pixels and covers the guardian and any other player
+  inside it. The game has one player, so today that means the guardian
+  itself - the aura is the seam a second player would use.
+- The reduction applies to the whole cooldown rather than to the readout,
+  so the ability really does come back sooner: Divine Protection's 20
+  seconds becomes 14.72 seconds at a 26.4% reduction.
+- The aura is drawn as a faint ring around the guardian, and the ability
+  panel shows `AURA -26% CD` while it is active.
+
+### Fixed along the way
+- **Half the abilities never showed a cooldown.** `Player.getCooldown()`
+  read `cooldowns[namelowercasedwithoutspaces]`, but the abilities stored
+  their cooldowns under camelCase keys - `divineProtection` against a
+  lookup for `divineprotection`. Seven of the twelve distinct abilities
+  (Healing Shot, Ground Slam, Adrenaline Rush, Sniper Shot, Smoke Screen,
+  Berserk Rage, Divine Protection) therefore always read "READY" in the
+  HUD, and `isAbilityReady()` was always true for them. The key is now
+  derived in one place, `Player.cooldownKey()`, and both the reader and
+  the writer use it.
+- `Player.takeDamage()` hardcoded the armour reduction as `armor * 0.015`
+  capped at `0.75`. Those numbers now come from
+  `config/constants.js` as `ARMOR_DAMAGE_REDUCTION`,
+  `ARMOR_MAX_REDUCTION` and the derived `ARMOR_EXCESS_THRESHOLD`, so the
+  damage formula and the aura cannot drift apart.
+
+### Files Modified
+- `config/constants.js` - armour reduction constants
+- `config/index.js` - exports them
+- `config/player-builds.js` - the guardian's `aura` block
+- `entities/player.js` - `excessArmor`, `ownCooldownReduction()`,
+  `updateCooldownAura()`, the aura ring, the aura readout
+- `entities/abilities.js` - `setCooldown()` applies the reduction
+- `core/game.js` - `game.players`, and the aura is recomputed each frame
+
+### Verified
+The headless suite is at 55 assertions, 55 passing. The new ones cover:
+no aura before the damage reduction is maxed out, the aura starting
+after it, the real cooldown being shortened, a player inside the aura
+getting the reduction and one outside not getting it, other builds having
+no aura, every one of the 14 abilities reporting a cooldown, and a live
+guardian run applying the aura without throwing.
+
+## Uncapped Per-Build Stat Growth (2026-10-22)
+
+### The reported bug
+"Glass cannon cannot exceed 80 damage."
+
+Measured, there was no 80-damage cap in the code. Three separate things
+produced that number:
+
+- The glass cannon's damage curve passes through **exactly 80 at level 14**
+  (`35 * (1 + 0.10 * 13) = 80.5`, floored to 80). Anything past it came
+  only from the next level up.
+- Damage **pickups** were capped at 210 in total, and the cap was applied
+  to `currentStats.damage`.
+- Every level up recomputed `currentStats.damage` from the build's base
+  value, so **a damage pickup was wiped by the next level up**. The glass
+  cannon is the build whose damage is recomputed on every level, so for it
+  damage pickups contributed nothing lasting.
+
+The pickup path was therefore dead, and the level path was easy to mistake
+for a ceiling.
+
+### What changed
+- `config/player-builds.js`: each build now declares a `growth` object -
+  which of its stats grow per level, and by what fraction of its base
+  value. The `passive` string stays next to it.
+- `entities/player.js`: `calculateDerivedStats()` is now one generic
+  derivation driven by that object - `base * (1 + growth * (level - 1)) +
+  bonus` - instead of a `switch` over the build name. **Nothing is
+  capped.**
+- `entities/player.js`: pickup bonuses live in a separate `bonusStats`
+  pool, so levelling up cannot wipe them. `addBonus(stat, amount)` is the
+  new entry point.
+- `entities/pickup.js`: damage and speed pickups call `addBonus()`. The
+  `MAX_SPEED` / `MAX_SHIELD` / `MAX_DAMAGE` constants are gone.
+- `config/constants.js`: `STAT_CAPS` is deleted outright - `maxSpeed` 300,
+  `maxShield` 150, `maxHp` 1500, `maxDamage` 210. (`maxHp` was never
+  enforced anyway: the tank passed 1800 HP at level 20.)
+- `core/game.js`: the `currentStats.speed = baseStats.speed *
+  SPEED_SCALE_FACTOR` line in `start()` is gone - the derivation owns speed
+  now, and the line would have wiped the speed bonus on the first level
+  up.
+- `entities/player.js`: the player's own health bar read `Entity.maxHp`,
+  which was never updated when the derived max HP grew, so the bar
+  overflowed its own width from the first level up. The derived stats now
+  keep `maxHp` in step.
+
+### Measured
+
+| Stat | L1 | L14 | L20 | L50 |
+|---|---|---|---|---|
+| Glass cannon damage | 35 | 80 | 101 | 206 |
+| Fighter HP | 350 | 714 | 882 | 1722 |
+| Tank HP | 550 | 1408 | 1804 | 3784 |
+| Tank armor | 45 | 74 | 87 | 155 |
+| Balanced HP | 300 | 534 | 641 | 1182 |
+| Balanced damage | 15 | 26 | 32 | 59 |
+| Balanced armor | 22 | 39 | 47 | 86 |
+| Berserker damage | 18 | 29 | 35 | 62 |
+| Guardian armor | 40 | 92 | 116 | 236 |
+
+A glass cannon at level 50 with twenty damage pickups deals 246 - past the
+old 210 cap, which a hundred damage pickups would once have hit and stopped
+at. The shield is uncapped too, and the speed bonus is uncapped.
+
+The **berserker used to have no level scaling at all** - its damage, HP and
+armor were the same at level 50 as at level 1. It now gains 5% damage per
+level.
+
+### What is still bounded, and why
+- **The sniper's crit chance stops at 100%.** A probability above 100%
+  cannot mean anything.
+- **Armor's damage reduction stops at 75%.** The cap is on the reduction,
+  not on the stat: guardian armor keeps climbing past 50 as a number, but
+  past that point it no longer reduces any more damage. Removing the cap
+  would mean a reduction over 100%, which would make the player *heal*
+  when hit.
+
+### Verified
+The headless suite is at 46 assertions, 46 passing. The new ones cover:
+glass cannon damage passing 80 and continuing to grow, damage and speed
+pickups surviving a level up, damage/shield/speed no longer being capped,
+every build's stat matching its declared rate and still growing at level
+50, the sniper's crit chance reaching but not passing 100%, the berserker
+scaling, and the health bar reference tracking the growing max HP.
+
+## Bug Fix Pass and Quit-to-Menu (2026-10-22)
+
+### Runaway render loop (critical)
+**Issue**: `main.js` scheduled a `requestAnimationFrame` chain *and*
+`Game.loop` rescheduled itself, so the chain grew by one callback every
+frame. By frame 630 the scene was being rendered 633 times per frame, and
+every one of those renders threw an exception (see the pause soft-lock
+below), so the errors repeated 633 times per frame as well.
+
+**Fix**: `Game` now owns the `requestAnimationFrame` chain exclusively.
+`startLoop()` schedules it once; `loop()` schedules the next frame and
+nothing else may schedule it.
+
+**Measured** (headless harness, 600 frames, 1920x1080):
+
+| Metric | Before | After |
+|---|---|---|
+| `game.update()` calls per frame | 333 | 1 |
+| Scene renders per frame | 333 (633 peak) | 1 |
+| Canvas fills per frame | 149,679 | 254 |
+| Fills using `shadowBlur` | 149,663 | 253 |
+| Worst frame (blurred draws) | 667,815 | 304 |
+| Reported FPS | 1800 | 60 |
+
+### Pause soft-lock (critical)
+**Issue**: `ESC` set `state = 'paused'` without activating the pause scene.
+`PauseScene.update` never ran, so `ESC` could not unpause, the main menu was
+drawn over the frozen game, and `MenuScene.render` received the *Game*
+object as its `particles` argument - throwing `game.draw is not a function`
+633 times per frame, forever.
+
+**Fix**: pausing now switches to the `pause` scene as well as setting the
+state, so the pause menu receives input and unpauses cleanly.
+
+### Quit to main menu
+`Q` in the pause menu abandons the run and returns to the main menu. The
+`Game` instance and the animation loop stay alive - only the run state is
+cleared - so a new run can be started immediately without reloading the app.
+`R` restarts the run with the same build and difficulty.
+
+### Level-up no longer interrupts play
+The level-up overlay froze the game for two seconds per level gained, and a
+multi-level award cost the player several separate freezes. It was also
+unreachable in practice: `Player.addXP()` already applies the level-up, so
+the XP threshold the scene waited for had usually been consumed before the
+game could notice it.
+
+Level-ups are now announced with a fading notice and a particle burst at the
+player. Nothing pauses, nothing overlays the action. `scenes/levelup.js` is
+deleted.
+
+### One bullet, one enemy
+A player projectile could damage every enemy it overlapped in the same frame.
+Projectiles are now marked dead after their first hit, so a bullet damages
+exactly one enemy.
+
+### Other fixes
+- A key tap that begins and ends between two frames is no longer dropped.
+- `keysPressed` is consumed by `isKeyPressed()` rather than cleared on
+  keyup, so the tap survives until the frame that reads it.
+- The debug overlay is drawn once by the game loop, on top of everything,
+  instead of once inside `renderUI` and once again by the pause scene.
+- The menu and settings scenes no longer fill the canvas with an opaque
+  rectangle, which was painting over the starfield and ambient particles
+  the loop had already drawn.
+- The `text` particle type gained a velocity, because `Particle.update()`
+  reads `this.velocity` for every particle type and would have thrown on
+  the first use.
+- `CollisionSystem` tolerates a null player, so quitting to the menu cannot
+  throw from a collision check.
+- The FPS meter now measures the real frame interval instead of callback
+  scheduling jitter, and discards outlier samples (tab switches).
+- Shooters retreat at a sane speed instead of accelerating away.
+- The game-over screen says "Press SPACE to return to main menu", which is
+  what it actually does.
+
+### New
+- `core/debug-overlay.js` - press `F` for fps, frame time, draw counts and
+  entity counts.
+- `entities/build-visuals.js` - per-build ship decoration, extracted from
+  `player.js`.
+
 ## Codebase Consistency Update (2026-04-16)
 
 ### Configuration Centralization
@@ -271,7 +1169,7 @@ Skills activated with keys **1** and **2**.
 
 #### Main Game Class
 - Canvas setup and context management
-- Game states: menu, playing, paused, gameover, levelup
+- Game states: menu, settings, playing, paused, gameover
 - Menu system: Build selection (7 builds), difficulty selection (4 levels)
 - Game loop with delta time
 - Entity management (player, enemies, bosses, projectiles, pickups)
@@ -357,10 +1255,20 @@ export { Player };
 
 - **WASD / Arrow Keys** - Move player
 - **SPACE** - Shoot
+- **1 / 2** - Active abilities
+- **ESC or P** - Pause (and resume)
+- **R** - Restart the run from the pause menu
+- **Q** - Quit to the main menu from the pause menu
+- **F** - Toggle the debug overlay
 - **UP/DOWN** - Navigate build selection
 - **LEFT/RIGHT** - Navigate difficulty selection
+- **S** - Settings from the main menu
 
 ## File Structure
+
+See the project structure section of README.md - it is the current one. The
+tree below is the historical layout from the initial implementation and is
+kept for reference only.
 
 ```
 simple_claude_game/
@@ -389,7 +1297,9 @@ simple_claude_game/
 
 ## Known Issues
 
-None currently reported.
+See the known issues section of README.md for the current list. As of
+2026-10-22 it covers dead code, an unreachable boss, unused config exports
+and a stale constant.
 
 ## Future Improvements
 
@@ -399,6 +1309,6 @@ None currently reported.
 - [ ] Weapon upgrades and drops
 - [ ] Multiplayer support
 - [ ] Mobile touch controls
-- [ ] Screen shake effects
+- [x] Screen shake effects
 - [ ] More particle effects
 - [ ] Achievements system

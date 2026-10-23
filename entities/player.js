@@ -1,8 +1,9 @@
 // Player Entity with Stats and Level System
 
 import { Entity } from '../systems/entity.js';
-import { BUILDS, STAT_CAPS, STAT_GROWTH, SPEED_SCALE_FACTOR } from '../config/index.js';
+import { BUILDS, STAT_GROWTH, SPEED_SCALE_FACTOR, ARMOR_DAMAGE_REDUCTION, ARMOR_MAX_REDUCTION, ARMOR_EXCESS_THRESHOLD } from '../config/index.js';
 import { PlayerAbilities } from './abilities.js';
+import { drawBuildVisual } from './build-visuals.js';
 
 class Player extends Entity {
   constructor(buildName, x, y) {
@@ -11,11 +12,22 @@ class Player extends Entity {
     super({ x, y, width: 30, height: 30, color: build.color, name: build.name, hp: build.stats.hp, maxHp: build.stats.maxHp, damage: build.stats.damage, speed: build.stats.speed * SPEED_SCALE_FACTOR, armor: build.stats.armor });
     this.buildName = buildName;
     this.build = build;
+    // The id identifies the player across the network, and the name is what
+    // the roster shows. Both are filled in by whoever creates the player.
+    this.playerId = null;
+    this.playerName = build.name;
+    this.isAI = false;
+    this.score = 0;
+    this.kills = 0;
     this.level = 1;
     this.xp = 0;
     this.xpToNextLevel = 100;
     this.baseStats = { ...build.stats };
     this.currentStats = { ...build.stats };
+    // Bonuses collected from pickups. They are kept apart from the derived
+    // stats because levelling up recomputes those from the build's base
+    // values - a bonus stored in currentStats would be thrown away.
+    this.bonusStats = { maxHp: 0, damage: 0, speed: 0, armor: 0 };
     this.evasion = build.stats.evasion;
     this.criticalChance = build.stats.criticalChance;
     this.criticalDamage = build.stats.criticalDamage;
@@ -23,6 +35,9 @@ class Player extends Entity {
     this.shield = 0;
     this.rage = 0;
     this.maxRage = 100;
+    // Fraction by which this player's ability cooldowns are shortened, by
+    // its own excess armour or by a guardian aura.
+    this.cooldownReduction = 0;
     this.cooldowns = {};
     this.invulnerable = 0;
     this.cooldownTime = 0;
@@ -32,32 +47,74 @@ class Player extends Entity {
     this.calculateDerivedStats();
   }
 
-  // Calculate derived stats from base stats
+  // Recompute the stats that scale with the level.
+  //
+  // Each build declares which of its stats grow per level, and by what
+  // fraction of its base value, in config/player-builds.js. Nothing here is
+  // capped: a stat that grows keeps growing for as long as the player
+  // survives, and the bonuses collected from pickups are added on top of
+  // the scaled base rather than being overwritten by it.
   calculateDerivedStats() {
-    switch (this.buildName) {
-      case 'fighter':
-        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.08));
-        break;
-      case 'glass_cannon':
-        this.currentStats.damage = Math.floor(this.baseStats.damage * (1 + (this.level - 1) * 0.10));
-        break;
-      case 'tank':
-        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.12));
-        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.05));
-        break;
-      case 'balanced':
-        this.currentStats.maxHp = Math.floor(this.baseStats.maxHp * (1 + (this.level - 1) * 0.06));
-        this.currentStats.damage = Math.floor(this.baseStats.damage * (1 + (this.level - 1) * 0.06));
-        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.06));
-        break;
-      case 'sniper':
-        this.criticalChance = Math.min(1, this.baseStats.criticalChance + (this.level - 1) * 0.08);
-        break;
-      case 'guardian':
-        this.currentStats.armor = Math.floor(this.baseStats.armor * (1 + (this.level - 1) * 0.10));
-        break;
-    }
+    const base = this.baseStats;
+    const bonus = this.bonusStats;
+    const growth = this.build.growth || {};
+    const levels = this.level - 1;
+
+    this.currentStats.maxHp = Math.floor(base.maxHp * (1 + (growth.maxHp || 0) * levels)) + bonus.maxHp;
+    this.currentStats.damage = Math.floor(base.damage * (1 + (growth.damage || 0) * levels)) + bonus.damage;
+    this.currentStats.armor = Math.floor(base.armor * (1 + (growth.armor || 0) * levels)) + bonus.armor;
+    this.currentStats.speed = base.speed * SPEED_SCALE_FACTOR + bonus.speed;
+    this.currentStats.hp = this.currentStats.maxHp;
+
+    // A crit chance above 100% cannot mean anything, so that one stays
+    // bounded. Every other stat is free to grow.
+    this.criticalChance = Math.min(1, base.criticalChance + (growth.criticalChance || 0) * levels);
+
+    // Keep the base entity's copies in step - the health bar reads maxHp.
+    this.maxHp = this.currentStats.maxHp;
+    this.damage = this.currentStats.damage;
+    this.armor = this.currentStats.armor;
+    this.speed = this.currentStats.speed;
+
     this.hp = Math.min(this.hp, this.currentStats.maxHp);
+  }
+
+  // Add a permanent bonus from a pickup. Bonuses live in their own pool so
+  // that levelling up - which recomputes the derived stats from the build's
+  // base values - does not throw them away.
+  addBonus(stat, amount) {
+    if (this.bonusStats[stat] === undefined) return;
+    this.bonusStats[stat] += amount;
+    this.calculateDerivedStats();
+  }
+
+  // The armour that has already maxed out the 75% damage reduction. It
+  // cannot make the player any harder to kill, so the guardian spends it
+  // on cooldown reduction instead.
+  get excessArmor() {
+    return Math.max(0, this.currentStats.armor - ARMOR_EXCESS_THRESHOLD);
+  }
+
+  // The cooldown reduction this player grants from its own excess armour.
+  // Zero for every build without an aura.
+  ownCooldownReduction() {
+    const aura = this.build.aura;
+    if (!aura) return 0;
+    return Math.min(aura.maxCooldownReduction, this.excessArmor * aura.cooldownPerArmor);
+  }
+
+  // Recompute the cooldown reduction this player is under: its own excess
+  // armour, or the strongest guardian aura covering it. The guardian is
+  // inside its own aura, so the two are the same number and are not
+  // added together.
+  updateCooldownAura(players) {
+    let reduction = this.ownCooldownReduction();
+    for (const other of players) {
+      if (other === this || !other.build?.aura) continue;
+      if (this.distanceTo(other) > other.build.aura.radius) continue;
+      reduction = Math.max(reduction, other.ownCooldownReduction());
+    }
+    this.cooldownReduction = reduction;
   }
 
   getDamage() {
@@ -75,7 +132,11 @@ class Player extends Entity {
       this.shield -= shieldAbsorb;
       amount -= shieldAbsorb;
     }
-    const reduction = Math.min(0.75, this.currentStats.armor * 0.015);
+    // Armor reduces damage. The reduction is capped at 75% so that armor
+    // can never make the player invulnerable - past that point the armor
+    // number keeps growing but stops adding anything, and the guardian
+    // turns the excess into a cooldown aura instead.
+    const reduction = Math.min(ARMOR_MAX_REDUCTION, this.currentStats.armor * ARMOR_DAMAGE_REDUCTION);
     const actualDamage = amount * (1 - reduction);
     this.hp -= actualDamage;
     if (this.buildName === 'berserker') this.rage = Math.min(this.maxRage, this.rage + actualDamage * 0.5);
@@ -85,11 +146,17 @@ class Player extends Entity {
   }
 
   heal(amount) { this.hp = Math.min(this.hp + amount, this.currentStats.maxHp); }
-  addShield(amount) { this.shield = Math.min(this.shield + amount, STAT_CAPS.maxShield); }
+  addShield(amount) { this.shield += amount; }
   activateAbility(abilityName) { return this.abilities.activate(abilityName); }
 
+  // Cooldowns are keyed by the ability name lowercased with the spaces
+  // stripped. The reader and the writer must agree on this, or a
+  // cooldown is set under one key and read under another and the ability
+  // never shows as recharging.
+  cooldownKey(abilityName) { return abilityName.toLowerCase().replace(/\s+/g, ''); }
+
   getCooldown(abilityName) {
-    const now = Date.now(), key = abilityName.toLowerCase().replace(/\s+/g, ''), cooldown = this.cooldowns[key];
+    const now = Date.now(), cooldown = this.cooldowns[this.cooldownKey(abilityName)];
     if (!cooldown) return 0;
     return Math.max(0, (cooldown - now) / 1000);
   }
@@ -98,7 +165,14 @@ class Player extends Entity {
 
   addXP(amount) {
     this.xp += amount;
-    if (this.xp >= this.xpToNextLevel) this.levelUp();
+    // A single award can span several level thresholds (a boss kill at low
+    // level), so keep levelling until the XP is below the next threshold.
+    let levelsGained = 0;
+    while (this.xp >= this.xpToNextLevel) {
+      this.levelUp();
+      levelsGained++;
+    }
+    return levelsGained;
   }
 
   levelUp() {
@@ -123,9 +197,11 @@ class Player extends Entity {
     let effectiveSpeed = this.currentStats.speed;
     if (this.speedBoostActive) effectiveSpeed *= 1.5;
     if (input) {
-      const movement = input.getMovement();
-      this.vx += movement.dx * effectiveSpeed * deltaTime * 60;
-      this.vy += movement.dy * effectiveSpeed * deltaTime * 60;
+      // The input is either a live input handler or a plain { dx, dy } pair
+      // built by the AI or received over the network.
+      const movement = typeof input.getMovement === 'function' ? input.getMovement() : input;
+      this.vx += (movement.dx || 0) * effectiveSpeed * deltaTime * 60;
+      this.vy += (movement.dy || 0) * effectiveSpeed * deltaTime * 60;
     }
     this.x += this.vx * deltaTime;
     this.y += this.vy * deltaTime;
@@ -141,6 +217,18 @@ class Player extends Entity {
 
   draw(ctx) {
     const center = this.getCenter();
+    // Guardian aura - the radius the cooldown reduction reaches. Faint, so
+    // it never gets in the way of the fight.
+    if (this.cooldownReduction > 0 && this.build.aura) {
+      ctx.save();
+      ctx.strokeStyle = this.color;
+      ctx.globalAlpha = 0.12 + this.cooldownReduction * 0.3;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, this.build.aura.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
     if (this.shield > 0) {
       ctx.save();
       ctx.shadowBlur = 15;
@@ -179,8 +267,10 @@ class Player extends Entity {
     ctx.globalAlpha = 1;
     this.drawHealthBar(ctx, center.x, this.y - 10, 40, 6);
     if (this.shield > 0) {
+      // The bar is scaled against the health pool, so it stays meaningful
+      // as both the shield and the max HP grow.
       ctx.fillStyle = '#4444ff';
-      ctx.fillRect(center.x - 20, this.y - 18, 40 * Math.min(this.shield / STAT_CAPS.maxShield, 1), 4);
+      ctx.fillRect(center.x - 20, this.y - 18, 40 * Math.min(this.shield / this.currentStats.maxHp, 1), 4);
     }
     ctx.fillStyle = '#ffffff';
     ctx.font = '10px monospace';
@@ -204,172 +294,17 @@ class Player extends Entity {
 
   // Draw build-specific visual designs
   drawBuildSpecific(ctx, center) {
-    ctx.save();
-    const x = center.x, y = center.y, w = this.width / 2;
-
-    switch (this.buildName) {
-      case 'fighter':
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(x - w - 2, y - 5);
-        ctx.lineTo(x - w - 2, y + 5);
-        ctx.lineTo(x - w + 3, y);
-        ctx.closePath();
-        ctx.fill();
-        break;
-
-      case 'glass_cannon':
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.3;
-        const r = w + 5;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.stroke();
-        break;
-
-      case 'tank':
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = 0.5;
-        ctx.fillRect(x - w, y - 3, w * 2, 6);
-        break;
-
-      case 'balanced':
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(x, y - w);
-        ctx.lineTo(x, y + w);
-        ctx.moveTo(x - w, y);
-        ctx.lineTo(x + w, y);
-        ctx.stroke();
-        break;
-
-      case 'sniper':
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = 0.6;
-        ctx.fillRect(x + 2, y - 1.5, w + 3, 3);
-        break;
-
-      case 'berserker':
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.5;
-        for (let i = 0; i < 4; i++) {
-          const angle = (i / 4) * Math.PI * 2;
-          const sx = x + Math.cos(angle) * (w + 2);
-          const sy = y + Math.sin(angle) * (w + 2);
-          const ex = x + Math.cos(angle) * (w + 6);
-          const ey = y + Math.sin(angle) * (w + 6);
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
-        }
-        break;
-
-      case 'guardian':
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.4;
-        ctx.beginPath();
-        ctx.arc(x, y, w + 5, 0, Math.PI * 2);
-        ctx.stroke();
-        break;
-    }
-
-    ctx.restore();
-  }
-
-  // Draw build-specific visual designs (optimized, skip on low FPS)
-  drawBuildSpecific(ctx, center) {
     // Skip expensive visuals if frame rate is low (dynamic quality scaling)
     if (this.skipBuildVisuals) return;
 
-    ctx.save();
-    const x = center.x, y = center.y, w = this.width / 2;
-
-    switch (this.buildName) {
-      case 'fighter':
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(x - w - 2, y - 5);
-        ctx.lineTo(x - w - 2, y + 5);
-        ctx.lineTo(x - w + 3, y);
-        ctx.closePath();
-        ctx.fill();
-        break;
-
-      case 'glass_cannon':
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.3;
-        const r = w + 5;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.stroke();
-        break;
-
-      case 'tank':
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = 0.5;
-        ctx.fillRect(x - w, y - 3, w * 2, 6);
-        break;
-
-      case 'balanced':
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(x, y - w);
-        ctx.lineTo(x, y + w);
-        ctx.moveTo(x - w, y);
-        ctx.lineTo(x + w, y);
-        ctx.stroke();
-        break;
-
-      case 'sniper':
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = 0.6;
-        ctx.fillRect(x + 2, y - 1.5, w + 3, 3);
-        break;
-
-      case 'berserker':
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.5;
-        for (let i = 0; i < 4; i++) {
-          const angle = (i / 4) * Math.PI * 2;
-          const sx = x + Math.cos(angle) * (w + 2);
-          const sy = y + Math.sin(angle) * (w + 2);
-          const ex = x + Math.cos(angle) * (w + 6);
-          const ey = y + Math.sin(angle) * (w + 6);
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
-        }
-        break;
-
-      case 'guardian':
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.4;
-        ctx.beginPath();
-        ctx.arc(x, y, w + 5, 0, Math.PI * 2);
-        ctx.stroke();
-        break;
-    }
-
-    ctx.restore();
+    drawBuildVisual(ctx, this.buildName, center, this.width / 2, this.color);
   }
 
-  // Draw ability cooldowns
+  // Draw ability cooldowns. The rectangles are returned as well, so the
+  // mouse can find the buttons and fire the ability.
   drawCooldowns(ctx, x, y) {
     const abilities = this.build.abilities, keyLabels = ['[1]', '[2]'];
+    const buttons = [];
     abilities.forEach((ability, i) => {
       const cd = this.getCooldown(ability), yPos = y + i * 35;
       ctx.fillStyle = cd > 0 ? '#222' : '#1a3a1a';
@@ -393,8 +328,16 @@ class Player extends Entity {
         ctx.font = 'bold 10px monospace';
         ctx.fillText('READY', x + 5, yPos + 5);
       }
+      buttons.push({ x, y: yPos - 20, w: 140, h: 30, index: i });
     });
+    if (this.cooldownReduction > 0) {
+      ctx.fillStyle = this.color;
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`AURA -${Math.round(this.cooldownReduction * 100)}% CD`, x + 5, y + 65);
+    }
+    return buttons;
   }
 }
 
-export { Player, BUILDS, STAT_GROWTH, STAT_CAPS, SPEED_SCALE_FACTOR };
+export { Player, BUILDS, STAT_GROWTH, SPEED_SCALE_FACTOR };

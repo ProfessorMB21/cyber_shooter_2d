@@ -42,9 +42,11 @@ class Particle {
         break;
 
       case 'text':
+        // update() reads velocity for every particle type
+        this.velocity = { x: 0, y: -0.6 };
         this.color = this.config.color || '#ffffff';
         this.size = this.config.size || 16;
-        this.life = 1;
+        this.life = this.config.life || 1;
         this.decay = 0.01;
         this.fontSize = this.config.fontSize || this.size;
         break;
@@ -164,7 +166,7 @@ class ParticleSystem {
   }
 
   spawnText(text, x, y, color = '#ffffff') {
-    return this.spawn('text', 1, { text, x, y, color });
+    return this.spawn('text', 1, { text, x, y, color, size: 16 });
   }
 
   spawnCritical(x, y, count = 8) {

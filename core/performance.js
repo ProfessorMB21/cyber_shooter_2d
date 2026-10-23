@@ -10,18 +10,24 @@ class PerformanceMonitor {
     this.maxFrameSamples = 30;
   }
 
-  update() {
-    const now = performance.now();
+  update(timestamp) {
+    // Use the rAF timestamp when available so the sample measures the real
+    // frame interval rather than callback scheduling jitter.
+    const now = timestamp ?? performance.now();
     const frameTime = now - this.lastTime;
     this.lastTime = now;
 
-    this.frameTimes.push(frameTime);
-    if (this.frameTimes.length > this.maxFrameSamples) {
-      this.frameTimes.shift();
+    // Outlier samples (tab switches, debugger pauses) say nothing about
+    // rendering cost, so they are discarded rather than averaged in.
+    if (frameTime > 0 && frameTime < 250) {
+      this.frameTimes.push(frameTime);
+      if (this.frameTimes.length > this.maxFrameSamples) {
+        this.frameTimes.shift();
+      }
     }
 
     this.frameCount++;
-    if (this.frameCount % 30 === 0) {
+    if (this.frameCount % 30 === 0 && this.frameTimes.length > 0) {
       const avgTime = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
       this.avgFrameTime = avgTime;
       this.fps = Math.round(1000 / avgTime);

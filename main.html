@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple Claude Game</title>
+  <title>Cyber Shooter</title>
   <style>
     body {
       margin: 0;
@@ -18,10 +18,20 @@
     canvas {
       border: 2px solid #301919;
     }
+    .loading {
+      color: #0f0;
+      font-size: 24px;
+      text-align: center;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
   </style>
 </head>
 <body>
-  <!-- The game is loaded directly in this file -->
-  <script src="main.js"></script>
+  <div class="loading" id="loading">Loading Cyber Shooter...</div>
+  <!-- main.js is an ES module - it must be loaded with type="module" -->
+  <script type="module" src="main.js"></script>
 </body>
 </html>

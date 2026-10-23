@@ -1,5 +1,15 @@
 // Projectile Entity
 
+// Fallback bounds for projectiles created without explicit game bounds.
+// The game passes canvas-derived bounds so shots are not culled early on
+// large displays.
+const DEFAULT_BOUNDS = Object.freeze({
+  minX: -1000,
+  maxX: 10000,
+  minY: -1000,
+  maxY: 10000
+});
+
 class Projectile {
   constructor(x, y, vx, vy, damage, color, isPlayer = false, options = {}) {
     this.x = x;
@@ -18,13 +28,8 @@ class Projectile {
     this.duration = options.duration || 0;
     this.hits = [];
 
-    // Bounds configuration - larger than typical canvas for safety
-    this.bounds = options.bounds || {
-      minX: -100,
-      maxX: 2000,
-      minY: -100,
-      maxY: 1500
-    };
+    // Bounds configuration - the game supplies canvas-derived bounds
+    this.bounds = options.bounds || DEFAULT_BOUNDS;
 
     if (this.aoe) {
       this.size = 0;

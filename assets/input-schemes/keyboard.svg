@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="150" viewBox="0 0 320 150">
+  <title>Keyboard only - WASD moves, SPACE shoots, 1 and 2 are the abilities</title>
+  <defs>
+    <rect id="k" width="20" height="22" rx="3" fill="#23233f" stroke="#4a4a6a" stroke-width="1"/>
+    <rect id="kon" width="20" height="22" rx="3" fill="#0f0"/>
+  </defs>
+
+  <rect width="320" height="150" fill="#0a0a1a"/>
+  <rect x="30" y="14" width="260" height="122" rx="8" fill="#14142a" stroke="#3c3c5a" stroke-width="2"/>
+
+  <!-- the number row - 1 and 2 are the abilities -->
+  <use href="#kon" x="40" y="20"/>
+  <use href="#kon" x="63" y="20"/>
+  <use href="#k" x="86" y="20"/>
+  <use href="#k" x="109" y="20"/>
+  <use href="#k" x="132" y="20"/>
+  <use href="#k" x="155" y="20"/>
+  <use href="#k" x="178" y="20"/>
+  <use href="#k" x="201" y="20"/>
+  <use href="#k" x="224" y="20"/>
+  <use href="#k" x="247" y="20"/>
+
+  <!-- the top letter row - W moves up -->
+  <use href="#k" x="40" y="46"/>
+  <use href="#kon" x="63" y="46"/>
+  <use href="#k" x="86" y="46"/>
+  <use href="#k" x="109" y="46"/>
+  <use href="#k" x="132" y="46"/>
+  <use href="#k" x="155" y="46"/>
+  <use href="#k" x="178" y="46"/>
+  <use href="#k" x="201" y="46"/>
+  <use href="#k" x="224" y="46"/>
+  <use href="#k" x="247" y="46"/>
+
+  <!-- the home row - A, S and D move -->
+  <use href="#kon" x="51" y="72"/>
+  <use href="#kon" x="74" y="72"/>
+  <use href="#kon" x="97" y="72"/>
+  <use href="#k" x="120" y="72"/>
+  <use href="#k" x="143" y="72"/>
+  <use href="#k" x="166" y="72"/>
+  <use href="#k" x="189" y="72"/>
+  <use href="#k" x="212" y="72"/>
+  <use href="#k" x="235" y="72"/>
+
+  <!-- the bottom row, and the space bar -->
+  <use href="#k" x="40" y="98"/>
+  <use href="#k" x="63" y="98"/>
+  <use href="#k" x="86" y="98"/>
+  <use href="#k" x="109" y="98"/>
+  <use href="#k" x="132" y="98"/>
+  <use href="#k" x="155" y="98"/>
+  <use href="#k" x="178" y="98"/>
+  <rect x="204" y="98" width="63" height="22" rx="3" fill="#0f0"/>
+
+  <g font-family="monospace" font-size="9" text-anchor="middle">
+    <text x="50" y="35" fill="#062008">1</text>
+    <text x="73" y="35" fill="#062008">2</text>
+    <text x="96" y="35" fill="#8a8aa8">3</text>
+    <text x="119" y="35" fill="#8a8aa8">4</text>
+    <text x="142" y="35" fill="#8a8aa8">5</text>
+    <text x="165" y="35" fill="#8a8aa8">6</text>
+    <text x="188" y="35" fill="#8a8aa8">7</text>
+    <text x="211" y="35" fill="#8a8aa8">8</text>
+    <text x="234" y="35" fill="#8a8aa8">9</text>
+    <text x="257" y="35" fill="#8a8aa8">0</text>
+
+    <text x="50" y="61" fill="#8a8aa8">Q</text>
+    <text x="73" y="61" fill="#062008">W</text>
+    <text x="96" y="61" fill="#8a8aa8">E</text>
+    <text x="119" y="61" fill="#8a8aa8">R</text>
+    <text x="142" y="61" fill="#8a8aa8">T</text>
+    <text x="165" y="61" fill="#8a8aa8">Y</text>
+    <text x="188" y="61" fill="#8a8aa8">U</text>
+    <text x="211" y="61" fill="#8a8aa8">I</text>
+    <text x="234" y="61" fill="#8a8aa8">O</text>
+    <text x="257" y="61" fill="#8a8aa8">P</text>
+
+    <text x="61" y="87" fill="#062008">A</text>
+    <text x="84" y="87" fill="#062008">S</text>
+    <text x="107" y="87" fill="#062008">D</text>
+    <text x="130" y="87" fill="#8a8aa8">F</text>
+    <text x="153" y="87" fill="#8a8aa8">G</text>
+    <text x="176" y="87" fill="#8a8aa8">H</text>
+    <text x="199" y="87" fill="#8a8aa8">J</text>
+    <text x="222" y="87" fill="#8a8aa8">K</text>
+    <text x="245" y="87" fill="#8a8aa8">L</text>
+
+    <text x="50" y="113" fill="#8a8aa8">Z</text>
+    <text x="73" y="113" fill="#8a8aa8">X</text>
+    <text x="96" y="113" fill="#8a8aa8">C</text>
+    <text x="119" y="113" fill="#8a8aa8">V</text>
+    <text x="142" y="113" fill="#8a8aa8">B</text>
+    <text x="165" y="113" fill="#8a8aa8">N</text>
+    <text x="188" y="113" fill="#8a8aa8">M</text>
+    <text x="235" y="113" fill="#062008">SPACE</text>
+  </g>
+
+  <text x="160" y="132" font-family="monospace" font-size="8" text-anchor="middle" fill="#8a8aa8">SPACE shoots   1 / 2 abilities</text>
+</svg>

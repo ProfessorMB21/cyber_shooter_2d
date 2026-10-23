@@ -30,7 +30,7 @@ class SpawningSystem {
       if (this.game.enemies.length >= 30) break;
 
       const type = types[typeIndex];
-      const x = Math.random() * (this.game.width - 100) + 50;
+      const x = Math.random() * (this.game.worldWidth - 100) + 50;
       const y = Math.random() * 200 - 50;
 
       this.game.enemies.push(new Enemy(type, x, y, mult.enemyHp));
@@ -39,7 +39,7 @@ class SpawningSystem {
 
   spawnBoss(index) {
     const mult = DIFFICULTIES[this.game.difficulty];
-    const x = this.game.width / 2;
+    const x = this.game.worldWidth / 2;
     const y = 100;
 
     this.game.bosses.push(new Boss(index, x, y, mult.enemyHp));
@@ -61,8 +61,8 @@ class SpawningSystem {
       const types = ['health', 'shield', 'speed', 'damage'];
       const type = types[Math.floor(Math.random() * types.length)];
       this.game.pickups.push(new Pickup(
-        Math.random() * (this.game.width - 100) + 50,
-        Math.random() * (this.game.height - 100) + 50,
+        Math.random() * (this.game.worldWidth - 100) + 50,
+        Math.random() * (this.game.worldHeight - 100) + 50,
         type
       ));
     }
