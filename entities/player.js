@@ -4,6 +4,7 @@ import { Entity } from '../systems/entity.js';
 import { BUILDS, STAT_GROWTH, SPEED_SCALE_FACTOR, ARMOR_DAMAGE_REDUCTION, ARMOR_MAX_REDUCTION, ARMOR_EXCESS_THRESHOLD } from '../config/index.js';
 import { PlayerAbilities } from './abilities.js';
 import { drawBuildVisual } from './build-visuals.js';
+import { ItemSystem } from '../systems/item-system.js';
 
 class Player extends Entity {
   constructor(buildName, x, y) {
@@ -44,6 +45,11 @@ class Player extends Entity {
     this.shootCooldown = 0;
     this.passiveEffects = [];
     this.abilities = new PlayerAbilities(this);
+    // Item system - equipment and bonuses
+    this.items = [];
+    this.itemStats = {};
+    this.synergyBonuses = {};
+    this.itemSystem = new ItemSystem();
     this.calculateDerivedStats();
   }
 
@@ -77,6 +83,54 @@ class Player extends Entity {
     this.speed = this.currentStats.speed;
 
     this.hp = Math.min(this.hp, this.currentStats.maxHp);
+
+    // Apply item bonuses
+    const itemStats = this.itemStats || {};
+
+    // Flat damage bonus
+    if (itemStats.atkDmg) {
+      this.currentStats.damage += Math.floor(itemStats.atkDmg);
+      this.damage = this.currentStats.damage;
+    }
+
+    // Percent HP bonus
+    if (itemStats.hpPercent) {
+      const bonusHp = Math.floor(this.baseStats.maxHp * itemStats.hpPercent);
+      this.currentStats.maxHp += bonusHp;
+      this.maxHp = this.currentStats.maxHp;
+    }
+
+    // Armor bonus
+    if (itemStats.armor) {
+      this.currentStats.armor += Math.floor(itemStats.armor);
+      this.armor = this.currentStats.armor;
+    }
+
+    // Speed bonus
+    if (itemStats.speed) {
+      this.currentStats.speed *= (1 + itemStats.speed);
+      this.speed = this.currentStats.speed;
+    }
+
+    // Evasion (capped at 75%)
+    if (itemStats.evasion) {
+      this.evasion = Math.min(75, this.evasion + itemStats.evasion);
+    }
+
+    // Crit chance (capped at 100%)
+    if (itemStats.critChance) {
+      this.criticalChance = Math.min(1, this.criticalChance + itemStats.critChance);
+    }
+
+    // Crit damage
+    if (itemStats.critDamage) {
+      this.criticalDamage += itemStats.critDamage;
+    }
+
+    // Cooldown reduction (capped at 50%)
+    if (itemStats.cdReduction) {
+      this.cooldownReduction = Math.min(0.5, this.cooldownReduction + itemStats.cdReduction);
+    }
   }
 
   // Add a permanent bonus from a pickup. Bonuses live in their own pool so
@@ -182,6 +236,14 @@ class Player extends Entity {
     this.calculateDerivedStats();
     this.heal(this.currentStats.maxHp * 0.3);
     return this.level;
+  }
+
+  // Reset items on death (roguelike mechanic)
+  resetItems() {
+    this.items = [];
+    this.itemStats = {};
+    this.synergyBonuses = {};
+    this.itemSystem.reset();
   }
 
   update(deltaTime, input, canvasWidth, canvasHeight) {

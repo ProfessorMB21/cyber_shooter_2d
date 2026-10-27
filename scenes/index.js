@@ -5,6 +5,7 @@ export { GameOverScene } from './gameover.js';
 export { PauseScene } from './pause.js';
 export { SettingsScene } from './settings.js';
 export { LobbyScene } from './lobby.js';
+export { ItemSelectScene } from './item-select.js';
 
 // Scene Manager class to handle scene transitions
 class SceneManager {

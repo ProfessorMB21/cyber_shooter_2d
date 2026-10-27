@@ -1,6 +1,7 @@
 // Core Rendering System
 
 import { mouseWorldPos } from './controls.js';
+import { ITEM_SLOTS, RARITY_COLORS } from '../config/items.js';
 
 class RenderingSystem {
   constructor(game) {
@@ -132,6 +133,57 @@ class RenderingSystem {
     this.renderNotice(ctx);
     this.renderRoster(ctx);
     this.renderCrosshair(ctx);
+    this.renderItemSlots(ctx);
+  }
+
+  // Render equipped item slots in the HUD
+  renderItemSlots(ctx) {
+    const player = this.game.player;
+    if (!player || !player.items || player.items.length === 0) return;
+
+    const canvasHeight = this.game.height;
+    const x = 10;
+    const y = canvasHeight - 90;
+    const slotSize = 28;
+    const gap = 3;
+
+    // Draw slot backgrounds
+    ITEM_SLOTS.forEach((slot, i) => {
+      const slotX = x + i * (slotSize + gap);
+      ctx.fillStyle = '#111';
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      ctx.fillRect(slotX, y, slotSize, slotSize);
+      ctx.strokeRect(slotX, y, slotSize, slotSize);
+    });
+
+    // Draw equipped items
+    player.items.forEach(item => {
+      const slotIndex = ITEM_SLOTS.indexOf(item.slot);
+      if (slotIndex < 0) return;
+
+      const slotX = x + slotIndex * (slotSize + gap);
+      const rarityColor = RARITY_COLORS[item.rarity];
+
+      // Draw icon background
+      ctx.fillStyle = rarityColor;
+      ctx.globalAlpha = 0.3;
+      ctx.fillRect(slotX + 2, y + 2, slotSize - 4, slotSize - 4);
+      ctx.globalAlpha = 1;
+
+      // Draw border
+      ctx.strokeStyle = rarityColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(slotX + 2, y + 2, slotSize - 4, slotSize - 4);
+
+      // Draw stack count
+      if (item.currentStacks > 1) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(item.currentStacks, slotX + slotSize - 4, y + slotSize - 4);
+      }
+    });
   }
 
   // The line from the ship to the pointer. It is only drawn when the

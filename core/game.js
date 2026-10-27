@@ -7,8 +7,9 @@
 
 import { InputHandler } from '../input.js';
 import { BUILDS } from '../entities/player.js';
-import { MenuScene, GameOverScene, PauseScene, SettingsScene, LobbyScene, SceneManager } from '../scenes/index.js';
+import { MenuScene, GameOverScene, PauseScene, SettingsScene, LobbyScene, ItemSelectScene, SceneManager } from '../scenes/index.js';
 import { AIController } from '../systems/ai.js';
+import { ItemSystem } from '../systems/item-system.js';
 import { Simulation } from './simulation.js';
 import { OnlineSession } from './online-session.js';
 import { buildLocalInput } from './controls.js';
@@ -87,6 +88,12 @@ class Game extends Simulation {
     this.levelUpNotice = null;
     this.levelUpNoticeTimer = 0;
 
+    // Item selection state
+    this.itemSystem = new ItemSystem();
+    this.pendingItemSelection = false;
+    this.itemChoices = [];
+    this.itemSelectionCallback = null;
+
     // Timing
     this.lastTime = performance.now();
     // A clock that runs whatever the game is doing. The screens animate
@@ -103,6 +110,7 @@ class Game extends Simulation {
     this.sceneManager.register('gameover', new GameOverScene(this));
     this.sceneManager.register('pause', new PauseScene(this));
     this.sceneManager.register('lobby', new LobbyScene(this));
+    this.sceneManager.register('itemselect', new ItemSelectScene(this));
     this.sceneManager.switchTo('menu');
 
     // Bind loop
@@ -232,6 +240,10 @@ class Game extends Simulation {
     this.visuals.shakeAmount = 0;
     this.visuals.cameraX = 0;
     this.visuals.cameraY = 0;
+    this.itemSystem.reset();
+    this.pendingItemSelection = false;
+    this.itemChoices = [];
+    this.itemSelectionCallback = null;
   }
 
   switchState(newState) {
@@ -307,6 +319,14 @@ class Game extends Simulation {
       const quality = this.perf.getQualityLevel();
       if (this.player) {
         this.player.skipBuildVisuals = quality === 'low';
+      }
+
+      if (this.state === 'itemselect') {
+        const result = this.sceneManager.update(this.input);
+        // Item selection handles its own callbacks, just render
+        this.sceneManager.render(this.ctx, this.width, this.height, this);
+        this.debug.render(this.ctx);
+        return;
       }
 
       if (this.state === 'paused') {
@@ -529,6 +549,46 @@ class Game extends Simulation {
     const center = player.getCenter();
     this.particles.spawnExplosion(center.x, center.y, 18, '#0f0');
     this.particles.spawnText('LEVEL UP', center.x, center.y - 40, '#0f0');
+
+    // Trigger item selection
+    this.triggerItemSelection('levelup', player.level);
+  }
+
+  // Trigger item selection overlay
+  triggerItemSelection(trigger, level) {
+    if (this.pendingItemSelection) return;
+
+    const choices = this.itemSystem.generateChoices(4, level, this.player);
+    if (choices.length === 0) return;
+
+    this.itemChoices = choices;
+    this.pendingItemSelection = true;
+    this.state = 'itemselect';
+    this.sceneManager.switchTo('itemselect');
+
+    const itemSelectScene = this.sceneManager.scenes.itemselect;
+    itemSelectScene.show(choices, trigger, (itemId) => {
+      this.onItemSelected(itemId);
+    });
+  }
+
+  // Handle item selection completion
+  onItemSelected(itemId) {
+    if (!itemId) {
+      this.pendingItemSelection = false;
+      this.state = 'playing';
+      return;
+    }
+
+    const success = this.itemSystem.addItem(itemId, this.player);
+    if (success) {
+      const item = this.itemSystem.getItem(itemId);
+      this.showNotice(`EQUIPPED: ${item.name}`);
+    }
+
+    this.pendingItemSelection = false;
+    this.itemChoices = [];
+    this.state = 'playing';
   }
 
   // A wingman level up gets a quieter notice - it must not cover the
